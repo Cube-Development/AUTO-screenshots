@@ -9,6 +9,10 @@ const envSchema = z.object({
   BLOGIX_API_URL:    z.url("BLOGIX_API_URL должен быть валидным URL"),
   SERVER_API_KEY:    z.string().min(1, "SERVER_API_KEY обязателен"),
   BLOGIX_API_KEY:    z.string().min(1, "BLOGIX_API_KEY обязателен"),
+  // Telegram-нотификация (опционально)
+  SEND_TO_TELEGRAM:     z.string().default("false"),
+  TG_BOT_TOKEN:         z.string().default(""),
+  TG_CHAT_ID:           z.string().default(""),
   // Лимиты и порт
   TEST_SCREENSHOTS:     z.string().default("false"),
   MAX_SCREENSHOT_LIMIT: z.coerce.number().int().positive().default(5),

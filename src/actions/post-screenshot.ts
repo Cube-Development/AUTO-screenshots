@@ -10,6 +10,7 @@ import {
     uploadScreenshot 
 } from "../screenshot";
 import { log } from "../utils";
+import { notifyTelegram } from "../services/telegram-notify";
 import { getUploadLink } from "../api";
 import { IErrorCallback, IPostCapture, IPostScreenshotResponse } from "../type";
 import { SETTINGS } from "../config";
@@ -237,6 +238,11 @@ export class ScreenshotService {
                 log.info(`Загружаем скриншот в хранилище... | Post Url = ${url} | File name = ${uploadData.file_name}`);
                 await uploadScreenshot(uploadData.url, screenshot as Buffer);
                 log.success(`Успешно загружено! | Post Url = ${url} | File name = ${uploadData.file_name}`);
+
+                // Fire-and-forget: дублируем скриншот в TG бот (не блокирует ответ)
+                if (SETTINGS.SEND_TO_TELEGRAM) {
+                    notifyTelegram(screenshot as Buffer, url, uploadData.file_name);
+                }
 
                 return { success: true, file_name: uploadData.file_name };
 
