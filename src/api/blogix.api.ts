@@ -27,12 +27,16 @@ axiosRetry(blogixApi, {
 });
 
 
-export const getUploadLink = async (): Promise<{file_name: string, url: string}> => {
+export const getUploadLink = async (signal?: AbortSignal): Promise<{file_name: string, url: string}> => {
   try {
     const CONTENT_TYPE = 2;
-    const response = await blogixApi.get(`/file/v/upload_link`, { params: { extension: "png", content_type: CONTENT_TYPE } });
+    const response = await blogixApi.get(`/file/v/upload_link`, { 
+      params: { extension: "png", content_type: CONTENT_TYPE },
+      signal: signal
+    });
     return response?.data ;
   } catch (error) {
+    if (axios.isCancel(error)) throw new Error("ABORTED_BY_CLIENT");
     log.error(`❌ Ошибка получения ссылки для загрузки: ${JSON.stringify(error)}`);
     throw new Error(`Не удалось получить ссылку для загрузки: ${JSON.stringify(error)}`);
   }

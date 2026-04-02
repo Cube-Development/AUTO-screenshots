@@ -66,80 +66,88 @@ export async function closeModalIfExists(page: Page) {
   } catch {}
 }
 
-export async function handleTelegramLink(page: Page, link: string): Promise<Buffer> {
-  let target = tryResolveDirectTelegramKLink(link);
-  
-  if (target) {
-    log.info(`[FastPath] Прямая ссылка: ${target}`);
-  } else {
-    log.info(`[SlowPath] Открываю: ${link}`);
-    await page.goto(link, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(500);
+export async function handleTelegramLink(page: Page, link: string, signal?: AbortSignal): Promise<Buffer> {
+  // Подписка на аборт: мгновенно убиваем все ожидания на странице
+  const abortNavigation = () => { page.goto('about:blank').catch(() => {}); };
+  signal?.addEventListener('abort', abortNavigation, { once: true });
 
-    const btn = await page.$("a.tgme_action_web_button, a.tgme_action_button_new, a.tgme_action_button");
-    if (!btn) {
-      log.warn("Кнопка 'Open in Web' не найдена.");
-      await page.waitForTimeout(2000);
-      return await page.screenshot({ fullPage: true });
-    }
-
-    const hrefAttr = await btn.getAttribute("href");
-    if (hrefAttr) {
-      if (hrefAttr.includes("web.telegram.org")) target = hrefAttr;
-      else if (hrefAttr.includes("tgaddr") || hrefAttr.startsWith("tg://") || hrefAttr.includes("privatepost"))
-        target = buildWebHrefFromTgaddr(hrefAttr);
-      else if (hrefAttr.startsWith("/")) target = "https://t.me" + hrefAttr;
-    }
-
-    if (!target) {
-      const html = await page.content();
-      const m = html.match(/(tg(?:%3A|:)\/\/privatepost[^\"]+)/i) || html.match(/tgaddr=([^\"&']+)/i);
-      if (m) target = buildWebHrefFromTgaddr(m[1] ?? m[0]);
-    }
-  }
-
-  if (!target) throw new Error("Не удалось определить целевой URL.");
-
-  log.info(`Перехожу на: ${target}`);
-  await page.goto(target, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => null);
-  
-  await page.waitForTimeout(1000);
-  await closeModalIfExists(page);
-
-  log.info("Ожидание отрисовки контента сообщения...");
   try {
-    await page.waitForFunction(() => {
-        const selectors = [
-          '.Message', '.message', '.message-content', '.bubble', '.text-content', 
-          '.Message-content', '.media-container', '.message-text', '.text'
-        ];
-        const msg = selectors.map(s => document.querySelector(s)).find(el => el !== null) as HTMLElement;
-        if (!msg) return false;
-        
-        const text = msg.innerText || "";
-        const hasText = text.length > 2 && !text.includes("Loading") && !text.includes("Загрузка");
-        const hasMedia = msg.querySelector('img, video, canvas, .media-container, .poll, .album') !== null;
-        const reflectsReality = msg.offsetHeight > 20;
-
-        return (hasText || hasMedia) && reflectsReality;
-    }, { timeout: 25000 });
+    let target = tryResolveDirectTelegramKLink(link);
     
-    await page.waitForTimeout(1500);
-    log.info(`✅ Контент готов для ${link}`);
-  } catch (e: any) {
-    log.warn(`⚠️ Тайм-аут ожидания контента: ${e.message}`);
-    await page.waitForTimeout(2000); 
-  }
+    if (target) {
+      log.info(`[FastPath] Прямая ссылка: ${target}`);
+    } else {
+      log.info(`[SlowPath] Открываю: ${link}`);
+      await page.goto(link, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(500);
 
-  const screenshotOptions: any = { fullPage: true };
-  if (SETTINGS.TEST_SCREENSHOTS) {
-    const timestamp = getCISDateString();
-    const safeUrl = link.replace(/https?:\/\//, '').replace(/[\/:?=&]/g, '_').substring(0, 50);
-    screenshotOptions.path = path.join(TEST_SCREENS_DIR, `tg_${timestamp}_${safeUrl}.png`);
-  }
+      const btn = await page.$("a.tgme_action_web_button, a.tgme_action_button_new, a.tgme_action_button");
+      if (!btn) {
+        log.warn("Кнопка 'Open in Web' не найдена.");
+        await page.waitForTimeout(2000);
+        return await page.screenshot({ fullPage: true });
+      }
 
-  const buffer = await page.screenshot(screenshotOptions);
-  log.info("✅ Скриншот успешно сделан");
-  
-  return buffer;
+      const hrefAttr = await btn.getAttribute("href");
+      if (hrefAttr) {
+        if (hrefAttr.includes("web.telegram.org")) target = hrefAttr;
+        else if (hrefAttr.includes("tgaddr") || hrefAttr.startsWith("tg://") || hrefAttr.includes("privatepost"))
+          target = buildWebHrefFromTgaddr(hrefAttr);
+        else if (hrefAttr.startsWith("/")) target = "https://t.me" + hrefAttr;
+      }
+
+      if (!target) {
+        const html = await page.content();
+        const m = html.match(/(tg(?:%3A|:)\/\/privatepost[^\"]+)/i) || html.match(/tgaddr=([^\"&']+)/i);
+        if (m) target = buildWebHrefFromTgaddr(m[1] ?? m[0]);
+      }
+    }
+
+    if (!target) throw new Error("Не удалось определить целевой URL.");
+
+    log.info(`Перехожу на: ${target}`);
+    await page.goto(target, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => null);
+    
+    await page.waitForTimeout(1000);
+    await closeModalIfExists(page);
+
+    log.info(`Ожидание отрисовки контента сообщения... | Post url = ${link}`);
+    try {
+      await page.waitForFunction(() => {
+          const selectors = [
+            '.Message', '.message', '.message-content', '.bubble', '.text-content', 
+            '.Message-content', '.media-container', '.message-text', '.text'
+          ];
+          const msg = selectors.map(s => document.querySelector(s)).find(el => el !== null) as HTMLElement;
+          if (!msg) return false;
+          
+          const text = msg.innerText || "";
+          const hasText = text.length > 2 && !text.includes("Loading") && !text.includes("Загрузка");
+          const hasMedia = msg.querySelector('img, video, canvas, .media-container, .poll, .album') !== null;
+          const reflectsReality = msg.offsetHeight > 20;
+
+          return (hasText || hasMedia) && reflectsReality;
+      }, null, { timeout: 30000 });
+      
+      await page.waitForTimeout(3000);
+      log.info(`✅ Контент готов для ${link}`);
+    } catch (e: any) {
+      log.error(`⚠️ Тайм-аут или ошибка ожидания контента | Post url: ${link} | Error: ${e.message}`);
+      throw new Error(`TIMEOUT_OR_ERROR: Ошибка ожидания контента`);
+    }
+
+    const screenshotOptions: any = { fullPage: true };
+    if (SETTINGS.TEST_SCREENSHOTS) {
+      const timestamp = getCISDateString();
+      const safeUrl = link.replace(/https?:\/\//, '').replace(/[\/:?=&]/g, '_').substring(0, 50);
+      screenshotOptions.path = path.join(TEST_SCREENS_DIR, `tg_${timestamp}_${safeUrl}.png`);
+    }
+
+    const buffer = await page.screenshot(screenshotOptions);
+    log.info(`✅ Скриншот успешно сделан | Post url: ${link}`);
+    
+    return buffer;
+  } finally {
+    signal?.removeEventListener('abort', abortNavigation);
+  }
 }

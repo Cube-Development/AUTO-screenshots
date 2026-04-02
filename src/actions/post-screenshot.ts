@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { Browser, BrowserContext, chromium } from "playwright";
+import { Browser, BrowserContext, Page, chromium } from "playwright";
 import { 
     captureInstagramPostScreenshot, 
     ensureInstagramAuth, 
@@ -9,10 +9,24 @@ import {
     uploadScreenshot 
 } from "../screenshot";
 import { log, PagePool } from "../utils";
-import { notifyTelegram } from "../services/telegram-notify";
 import { getUploadLink } from "../api";
 import { IErrorCallback, IPostCapture, IPostScreenshotResponse } from "../type";
 import { SETTINGS } from "../config";
+
+/** Утилита для создания прерывающего промиса (гонки) */
+function createAbortRace(signal?: AbortSignal) {
+    if (!signal) return { abortPromise: new Promise<never>(() => {}), cleanupAbort: () => {} };
+    
+    let cleanupAbort: () => void = () => {};
+    const abortPromise = new Promise<never>((_, reject) => {
+        if (signal.aborted) return reject(new Error('ABORTED_BY_CLIENT'));
+        const handler = () => reject(new Error('ABORTED_BY_CLIENT'));
+        signal.addEventListener('abort', handler, { once: true });
+        cleanupAbort = () => signal.removeEventListener('abort', handler);
+    });
+    
+    return { abortPromise, cleanupAbort };
+}
 
 export class ScreenshotService {
     private static instance: ScreenshotService;
@@ -221,80 +235,90 @@ export class ScreenshotService {
         }
         return this.instagramPagePool;
     }
-
-    public async capture(url: string, user_bot_id?: string): Promise<IPostScreenshotResponse | IErrorCallback> {
-        // 1. Получаем ссылку для загрузки параллельно (не тратит ресурсы браузера)
-        const uploadLinkPromise = getUploadLink();
+    /** Общий паттерн: acquire → Promise.race(work, abort) → release */
+    private async executeInPool(
+        pool: PagePool,
+        workFn: (page: Page) => Promise<Buffer>,
+        url: string,
+        signal?: AbortSignal,
+        reqId?: string
+    ): Promise<Buffer> {
+        const page = await pool.acquire(signal, reqId);
+        log.info(`🗂️ Вкладка получена для ${url}${reqId ? ` [ID:${reqId}]` : ''}`);
 
         try {
+            return await workFn(page);
+        } finally {
+            pool.release(page);
+            log.info(`🗂️ Слот освобождён (${url})${reqId ? ` [ID:${reqId}]` : ''}`);
+        }
+    }
+
+    /** Подготовка и захват скриншота Telegram */
+    private async captureTelegram(browser: Browser, url: string, botId: string, signal?: AbortSignal, reqId?: string): Promise<Buffer> {
+        log.info(`Обработка Telegram URL | Post Url = ${url} | User Bot ID = ${botId}${reqId ? ` [ID:${reqId}]` : ''}`);
+        const auth_path = `src/auth/telegram/user_bot_${botId}/auth.json`;
+        await ensureTelegramAuth(auth_path);
+
+        const pool = this.getTelegramPagePool(browser, botId, auth_path);
+        return this.executeInPool(pool, (page) => handleTelegramLink(page, url, signal), url, signal, reqId);
+    }
+
+    /** Подготовка и захват скриншота Instagram */
+    private async captureInstagram(browser: Browser, url: string, signal?: AbortSignal, reqId?: string): Promise<Buffer> {
+        log.info(`Обработка Instagram URL | Post Url = ${url}`);
+        const auth_path = `src/auth/instagram/auth.json`;
+        await ensureInstagramAuth(auth_path);
+
+        const pool = this.getInstagramPagePool(browser, auth_path);
+        return this.executeInPool(pool, (page) => captureInstagramPostScreenshot(page, url, signal), url, signal, reqId);
+    }
+
+    public async capture(url: string, user_bot_id?: string, signal?: AbortSignal, reqId?: string): Promise<IPostScreenshotResponse | IErrorCallback> {
+        // Глобальный Promise.race для всего флоу (Playwright + S3)
+        const { abortPromise, cleanupAbort } = createAbortRace(signal);
+
+        const workPromise = async (): Promise<IPostScreenshotResponse | IErrorCallback> => {
             const browser = await this.getBrowser();
             let screenshot: Buffer;
-            let pool: PagePool;
 
+            // 1. Получаем скриншот (внутри executeInPool нет своей гонки, все полагается на внешнюю)
             if (this.isTelegramUrl(url)) {
-                const botId = user_bot_id || "1";
-                log.info(`Обработка Telegram URL | Post Url = ${url} | User Bot ID = ${botId}`);
-                const auth_path = `src/auth/telegram/user_bot_${botId}/auth.json`;
-                await ensureTelegramAuth(auth_path);
-
-                pool = this.getTelegramPagePool(browser, botId, auth_path);
-
-                // 2. Берём вкладку из пула (изолированный контекст)
-                const page = await pool.acquire();
-                log.info(`🗂️ Вкладка получена для ${url}`);
-
-                try {
-                    screenshot = await handleTelegramLink(page, url);
-                } finally {
-                    pool.release(page);
-                    log.info(`🗂️ Слот освобождён (${url})`);
-                }
-
+                screenshot = await this.captureTelegram(browser, url, user_bot_id || "1", signal, reqId);
             } else if (this.isInstagramUrl(url)) {
-                log.info(`Обработка Instagram URL | Post Url = ${url}`);
-                const auth_path = `src/auth/instagram/auth.json`;
-                await ensureInstagramAuth(auth_path);
-
-                pool = this.getInstagramPagePool(browser, auth_path);
-
-                const page = await pool.acquire();
-                log.info(`🗂️ Вкладка получена для ${url}`);
-
-                try {
-                    const resp = await captureInstagramPostScreenshot(page, url);
-                    if (!resp.success) return { ...resp as IErrorCallback };
-                    screenshot = (resp as IPostCapture)?.buffer as Buffer;
-                } finally {
-                    pool.release(page);
-                    log.info(`🗂️ Слот освобождён (${url})`);
-                }
-
+                screenshot = await this.captureInstagram(browser, url, signal, reqId);
             } else {
                 return { success: false, code: 1003, message: "UNSUPPORTED_URL" };
             }
 
-            // 3. Вкладка уже свободна — загрузка не блокирует пул
-            const uploadData = await uploadLinkPromise;
+            // ЖЕСТКИЙ СТОП для фонового промиса: 
+            // Это нужно, потому что Promise.race не отменяет сам фоновый промис (JS не умеет).
+            if (signal?.aborted) throw new Error("ABORTED_BY_CLIENT");
+
+            const uploadData = await getUploadLink(signal);
+            
+            // ЖЕСТКИЙ СТОП перед долгой загрузкой
+            if (signal?.aborted) throw new Error("ABORTED_BY_CLIENT");
 
             log.info(`Загружаем скриншот в хранилище... | Post Url = ${url} | File name = ${uploadData.file_name}`);
-            await uploadScreenshot(uploadData.url, screenshot as Buffer);
-            log.success(`Успешно загружено! | Post Url = ${url} | File name = ${uploadData.file_name}`);
+            await uploadScreenshot(uploadData.url, screenshot, signal);
+            log.success(`✅ Скриншот готов и загружен | Post Url = ${url}`);
 
-            // Fire-and-forget: дублируем скриншот в TG бот (не блокирует ответ)
-            if (SETTINGS.SEND_TO_TELEGRAM) {
-                notifyTelegram(screenshot as Buffer, url, uploadData.file_name);
-            }
+            return { success: true, file_name: uploadData.file_name, buffer: screenshot };
+        };
 
-            return { success: true, file_name: uploadData.file_name };
-
+        try {
+            return await Promise.race([workPromise(), abortPromise]);
         } catch (error: any) {
             const errorMsg = error.message || String(error);
-            log.error(`💥 Ошибка во время выполнения capture: ${errorMsg}`);
+            log.error(`💥 Ошибка во время выполнения capture | Post Url = ${url} | Error: ${errorMsg}`);
             return { 
                 success: false, 
                 code: 1004, 
                 message: `SCREENSHOT_FAILED: ${errorMsg}`
             };
+        } finally {
+            cleanupAbort();
         }
     }
 }

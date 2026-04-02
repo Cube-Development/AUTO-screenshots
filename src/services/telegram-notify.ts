@@ -52,7 +52,7 @@ async function sendTelegramFile(
 
   await axios.post(`${baseUrl}/${method}`, form, {
     headers: form.getHeaders(),
-    timeout: 30000,
+    timeout: 10000,
     maxContentLength: Infinity,
     maxBodyLength: Infinity,
   });

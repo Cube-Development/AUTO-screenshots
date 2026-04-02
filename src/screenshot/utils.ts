@@ -21,8 +21,14 @@ export function getCISDateString(): string {
     return `${d}.${m}.${y}_${h}-${min}-${s}`;
 }
 
-export async function uploadScreenshot(url: string, bytes: Buffer) {
-  await axios.put(url, bytes, {
-    headers: { "Content-Type": "image/png" },
-  });
+export async function uploadScreenshot(url: string, bytes: Buffer, signal?: AbortSignal) {
+  try {
+    await axios.put(url, bytes, {
+      headers: { "Content-Type": "image/png" },
+      signal: signal,
+    });
+  } catch (error) {
+    if (axios.isCancel(error)) throw new Error("ABORTED_BY_CLIENT");
+    throw error;
+  }
 }
