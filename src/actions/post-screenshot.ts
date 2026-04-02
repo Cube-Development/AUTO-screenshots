@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import { Browser, BrowserContext, chromium } from "playwright";
-import { Semaphore } from "async-mutex";
 import { 
     captureInstagramPostScreenshot, 
     ensureInstagramAuth, 
@@ -9,7 +8,7 @@ import {
     handleTelegramLink, 
     uploadScreenshot 
 } from "../screenshot";
-import { log } from "../utils";
+import { log, PagePool } from "../utils";
 import { notifyTelegram } from "../services/telegram-notify";
 import { getUploadLink } from "../api";
 import { IErrorCallback, IPostCapture, IPostScreenshotResponse } from "../type";
@@ -17,7 +16,6 @@ import { SETTINGS } from "../config";
 
 export class ScreenshotService {
     private static instance: ScreenshotService;
-    private readonly semaphore: Semaphore;
     private readonly MAX_CONCURRENT = SETTINGS.MAX_SCREENSHOT_LIMIT;
 
     private sharedBrowser: Browser | null = null;
@@ -29,9 +27,11 @@ export class ScreenshotService {
     private telegramContexts = new Map<string, BrowserContext>();
     private tgContextPromises = new Map<string, Promise<BrowserContext>>();
 
-    constructor() {
-        this.semaphore = new Semaphore(this.MAX_CONCURRENT);
-    }
+    // Пулы вкладок: каждый пул = N переиспользуемых Page
+    private telegramPagePools = new Map<string, PagePool>();
+    private instagramPagePool: PagePool | null = null;
+
+    constructor() {}
 
     public static getInstance(): ScreenshotService {
         if (!ScreenshotService.instance) {
@@ -98,14 +98,23 @@ export class ScreenshotService {
         return this.browserPromise;
     }
 
-    /** Сброс состояния при падении браузера — контексты становятся невалидными */
+    /** Сброс состояния при падении браузера — контексты и пулы становятся невалидными */
     private resetBrowserState(): void {
         this.sharedBrowser = null;
         this.browserPromise = null;
         this.instagramContext = null;
         this.igContextPromise = null;
+        // Сбрасываем пулы (освобождаем ожидающих)
+        if (this.instagramPagePool) {
+            this.instagramPagePool.reset();
+            this.instagramPagePool = null;
+        }
+        for (const pool of this.telegramPagePools.values()) {
+            pool.reset();
+        }
         this.telegramContexts.clear();
         this.tgContextPromises.clear();
+        this.telegramPagePools.clear();
         log.warn("🔄 Состояние браузера сброшено, следующий запрос создаст новый инстанс");
     }
 
@@ -152,6 +161,20 @@ export class ScreenshotService {
     }
 
     public async close(): Promise<void> {
+        // Сбрасываем пулы
+        for (const [botId, pool] of this.telegramPagePools) {
+            pool.reset();
+            log.info(`🗂️ Пул TG:${botId} сброшен`);
+        }
+        this.telegramPagePools.clear();
+
+        if (this.instagramPagePool) {
+            this.instagramPagePool.reset();
+            this.instagramPagePool = null;
+            log.info("🗂️ Пул IG сброшен");
+        }
+
+        // Закрываем контексты
         for (const [botId, context] of this.telegramContexts) {
             await context.close().catch(() => null);
             log.info(`📸 Telegram context для бота ${botId} закрыт`);
@@ -179,88 +202,98 @@ export class ScreenshotService {
         return /^https:\/\/www\.instagram\.com\//.test(url);
     }
 
+    /** Получить или создать пул для Telegram бота (изолированные контексты) */
+    private getTelegramPagePool(browser: Browser, botId: string, authPath: string): PagePool {
+        let pool = this.telegramPagePools.get(botId);
+        if (!pool) {
+            pool = new PagePool(browser, authPath, { width: 1280, height: 1600 }, this.MAX_CONCURRENT, `TG:${botId}`);
+            this.telegramPagePools.set(botId, pool);
+            log.info(`🗂️ Пул TG:${botId} создан (макс: ${this.MAX_CONCURRENT}, изолированные контексты)`);
+        }
+        return pool;
+    }
+
+    /** Получить или создать пул для Instagram (изолированные контексты) */
+    private getInstagramPagePool(browser: Browser, authPath: string): PagePool {
+        if (!this.instagramPagePool) {
+            this.instagramPagePool = new PagePool(browser, authPath, { width: 1280, height: 1200 }, this.MAX_CONCURRENT, "IG");
+            log.info(`🗂️ Пул IG создан (макс: ${this.MAX_CONCURRENT}, изолированные контексты)`);
+        }
+        return this.instagramPagePool;
+    }
+
     public async capture(url: string, user_bot_id?: string): Promise<IPostScreenshotResponse | IErrorCallback> {
-        // 1. Получаем ссылку для загрузки ДО семафора (не тратит системные ресурсы браузера)
+        // 1. Получаем ссылку для загрузки параллельно (не тратит ресурсы браузера)
         const uploadLinkPromise = getUploadLink();
-        
-        // 2. Устанавливаем общий таймаут на выполнение всей задачи
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("GLOBAL_CAPTURE_TIMEOUT")), 120000); // 120 секунд на всё
-        });
-
-        const executeCapture = async () => {
-            const [, release] = await this.semaphore.acquire();
-            log.info(`🚥 Семафор захвачен (${url})`);
-
-            try {
-                const browser = await this.getBrowser();
-                let screenshot: Buffer;
-
-                if (this.isTelegramUrl(url)) {
-                    const botId = user_bot_id || "1";
-                    log.info(`Обработка Telegram URL | Post Url = ${url} | User Bot ID = ${botId}`);
-                    const auth_path = `src/auth/telegram/user_bot_${botId}/auth.json`;
-                    await ensureTelegramAuth(auth_path);
-
-                    const context = await this.getTelegramContext(browser, botId, auth_path);
-                    const page = await context.newPage();
-
-                    try {
-                        screenshot = await handleTelegramLink(page, url);
-                    } finally {
-                        page.close().catch(() => null); // Закрываем без await, чтобы не висеть если браузер тупит
-                    }
-
-                } else if (this.isInstagramUrl(url)) {
-                    log.info(`Обработка Instagram URL | Post Url = ${url}`);
-                    const auth_path = `src/auth/instagram/auth.json`;
-                    await ensureInstagramAuth(auth_path);
-
-                    const context = await this.getInstagramContext(browser, auth_path);
-                    const page = await context.newPage();
-
-                    try {
-                        const resp = await captureInstagramPostScreenshot(page, url);
-                        if (!resp.success) return { ...resp as IErrorCallback };
-                        screenshot = (resp as IPostCapture)?.buffer as Buffer;
-                    } finally {
-                        page.close().catch(() => null);
-                        log.info(`📸 Instagram page закрыта`);
-                    }
-
-                } else {
-                    return { success: false, code: 1003, message: "UNSUPPORTED_URL" };
-                }
-
-                // Ожидаем ссылку (если она ещё не готова)
-                const uploadData = await uploadLinkPromise;
-
-                log.info(`Загружаем скриншот в хранилище... | Post Url = ${url} | File name = ${uploadData.file_name}`);
-                await uploadScreenshot(uploadData.url, screenshot as Buffer);
-                log.success(`Успешно загружено! | Post Url = ${url} | File name = ${uploadData.file_name}`);
-
-                // Fire-and-forget: дублируем скриншот в TG бот (не блокирует ответ)
-                if (SETTINGS.SEND_TO_TELEGRAM) {
-                    notifyTelegram(screenshot as Buffer, url, uploadData.file_name);
-                }
-
-                return { success: true, file_name: uploadData.file_name };
-
-            } finally {
-                release();
-                log.info(`🚥 Семафор освобожден (${url})`);
-            }
-        };
 
         try {
-            return await Promise.race([executeCapture(), timeoutPromise]);
+            const browser = await this.getBrowser();
+            let screenshot: Buffer;
+            let pool: PagePool;
+
+            if (this.isTelegramUrl(url)) {
+                const botId = user_bot_id || "1";
+                log.info(`Обработка Telegram URL | Post Url = ${url} | User Bot ID = ${botId}`);
+                const auth_path = `src/auth/telegram/user_bot_${botId}/auth.json`;
+                await ensureTelegramAuth(auth_path);
+
+                pool = this.getTelegramPagePool(browser, botId, auth_path);
+
+                // 2. Берём вкладку из пула (изолированный контекст)
+                const page = await pool.acquire();
+                log.info(`🗂️ Вкладка получена для ${url}`);
+
+                try {
+                    screenshot = await handleTelegramLink(page, url);
+                } finally {
+                    pool.release(page);
+                    log.info(`🗂️ Слот освобождён (${url})`);
+                }
+
+            } else if (this.isInstagramUrl(url)) {
+                log.info(`Обработка Instagram URL | Post Url = ${url}`);
+                const auth_path = `src/auth/instagram/auth.json`;
+                await ensureInstagramAuth(auth_path);
+
+                pool = this.getInstagramPagePool(browser, auth_path);
+
+                const page = await pool.acquire();
+                log.info(`🗂️ Вкладка получена для ${url}`);
+
+                try {
+                    const resp = await captureInstagramPostScreenshot(page, url);
+                    if (!resp.success) return { ...resp as IErrorCallback };
+                    screenshot = (resp as IPostCapture)?.buffer as Buffer;
+                } finally {
+                    pool.release(page);
+                    log.info(`🗂️ Слот освобождён (${url})`);
+                }
+
+            } else {
+                return { success: false, code: 1003, message: "UNSUPPORTED_URL" };
+            }
+
+            // 3. Вкладка уже свободна — загрузка не блокирует пул
+            const uploadData = await uploadLinkPromise;
+
+            log.info(`Загружаем скриншот в хранилище... | Post Url = ${url} | File name = ${uploadData.file_name}`);
+            await uploadScreenshot(uploadData.url, screenshot as Buffer);
+            log.success(`Успешно загружено! | Post Url = ${url} | File name = ${uploadData.file_name}`);
+
+            // Fire-and-forget: дублируем скриншот в TG бот (не блокирует ответ)
+            if (SETTINGS.SEND_TO_TELEGRAM) {
+                notifyTelegram(screenshot as Buffer, url, uploadData.file_name);
+            }
+
+            return { success: true, file_name: uploadData.file_name };
+
         } catch (error: any) {
             const errorMsg = error.message || String(error);
             log.error(`💥 Ошибка во время выполнения capture: ${errorMsg}`);
             return { 
                 success: false, 
                 code: 1004, 
-                message: error.message === "GLOBAL_CAPTURE_TIMEOUT" ? "TASK_TIMEOUT" : `SCREENSHOT_FAILED: ${errorMsg}`
+                message: `SCREENSHOT_FAILED: ${errorMsg}`
             };
         }
     }
