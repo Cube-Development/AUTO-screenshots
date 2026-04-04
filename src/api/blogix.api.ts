@@ -34,10 +34,17 @@ export const getUploadLink = async (signal?: AbortSignal): Promise<{file_name: s
       params: { extension: "png", content_type: CONTENT_TYPE },
       signal: signal
     });
-    return response?.data ;
-  } catch (error) {
+    return response?.data;
+  } catch (error: any) {
     if (axios.isCancel(error)) throw new Error("ABORTED_BY_CLIENT");
-    log.error(`❌ Ошибка получения ссылки для загрузки: ${JSON.stringify(error)}`);
-    throw new Error(`Не удалось получить ссылку для загрузки: ${JSON.stringify(error)}`);
+    
+    if (error.code === "ECONNABORTED") {
+      log.error(`❌ Blogix API Timeout: link request took more than 30s`);
+      throw new Error("UPLOAD_LINK_TIMEOUT");
+    }
+    
+    const details = error.response?.data?.message || error.message;
+    log.error(`❌ Blogix API Fail: ${details}`);
+    throw new Error(`UPLOAD_LINK_FAILED: ${details}`);
   }
 };

@@ -1,17 +1,20 @@
 import fs from "fs";
 import path from "path";
-import { Browser, BrowserContext, Page, chromium } from "playwright";
-import { 
-    captureInstagramPostScreenshot, 
-    ensureInstagramAuth, 
-    ensureTelegramAuth, 
-    handleTelegramLink, 
-    uploadScreenshot 
-} from "../screenshot";
-import { log, PagePool } from "../utils";
+import { Browser, chromium, Page } from "playwright";
 import { getUploadLink } from "../api";
-import { IErrorCallback, IPostCapture, IPostScreenshotResponse } from "../type";
 import { SETTINGS } from "../config";
+import {
+    captureInstagramPostScreenshot,
+    captureYoutubeSingle,
+    captureYoutubeTimelapse,
+    ensureInstagramAuth,
+    ensureTelegramAuth,
+    ensureYoutubeAuth,
+    handleTelegramLink,
+    uploadScreenshot
+} from "../screenshot";
+import { IErrorCallback, IPostScreenshotResponse, IYoutubeDebugResponse } from "../type";
+import { log, PagePool } from "../utils";
 
 /** Утилита для создания прерывающего промиса (гонки) */
 function createAbortRace(signal?: AbortSignal) {
@@ -35,15 +38,10 @@ export class ScreenshotService {
     private sharedBrowser: Browser | null = null;
     private browserPromise: Promise<Browser> | null = null;
     
-    private instagramContext: BrowserContext | null = null;
-    private igContextPromise: Promise<BrowserContext> | null = null;
-
-    private telegramContexts = new Map<string, BrowserContext>();
-    private tgContextPromises = new Map<string, Promise<BrowserContext>>();
-
-    // Пулы вкладок: каждый пул = N переиспользуемых Page
+    // Пулы вкладок: каждый пул = N изолированных контекстов (PagePool)
     private telegramPagePools = new Map<string, PagePool>();
     private instagramPagePool: PagePool | null = null;
+    private youtubePagePool: PagePool | null = null;
 
     constructor() {}
 
@@ -59,14 +57,22 @@ export class ScreenshotService {
         log.info("🚀 Прогрев браузера и контекстов...");
         const browser = await this.getBrowser();
         
-        // Instagram
-        const ig_auth = `src/auth/instagram/auth.json`;
+        await this.initInstagram(browser);
+        await this.initTelegram(browser);
+        await this.initYoutube(browser);
 
+        log.success("✅ Браузер и все контексты (IG + TG + YT) прогреты");
+    }
+
+    private async initInstagram(browser: Browser): Promise<void> {
+        const ig_auth = `src/auth/instagram/auth.json`;
         log.info(`🤖 Прогрев Instagram...`);
         await ensureInstagramAuth(ig_auth);
-        await this.getInstagramContext(browser, ig_auth);
+        this.getInstagramPagePool(browser, ig_auth);
+        log.info("📸 Instagram пул готов");
+    }
 
-        // Telegram: сканируем все папки ботов
+    private async initTelegram(browser: Browser): Promise<void> {
         const tg_base_path = `src/auth/telegram`;
         if (fs.existsSync(tg_base_path)) {
             const files = fs.readdirSync(tg_base_path);
@@ -77,12 +83,18 @@ export class ScreenshotService {
                     
                     log.info(`🤖 Прогрев Telegram для бота ${botId}...`);
                     await ensureTelegramAuth(tg_auth);
-                    await this.getTelegramContext(browser, botId, tg_auth);
+                    this.getTelegramPagePool(browser, botId, tg_auth);
                 }
             }
         }
+    }
 
-        log.success("✅ Браузер и все контексты (IG + все TG боты) прогреты");
+    private async initYoutube(browser: Browser): Promise<void> {
+        const yt_auth = `src/auth/youtube/auth.json`;
+        log.info(`🤖 Прогрев YouTube...`);
+        await ensureYoutubeAuth(yt_auth);
+        this.getYoutubePagePool(browser, yt_auth);
+        log.info("📸 YouTube пул готов");
     }
 
     private async getBrowser(): Promise<Browser> {
@@ -112,66 +124,24 @@ export class ScreenshotService {
         return this.browserPromise;
     }
 
-    /** Сброс состояния при падении браузера — контексты и пулы становятся невалидными */
+    /** Сброс состояния при падении браузера */
     private resetBrowserState(): void {
         this.sharedBrowser = null;
         this.browserPromise = null;
-        this.instagramContext = null;
-        this.igContextPromise = null;
         // Сбрасываем пулы (освобождаем ожидающих)
         if (this.instagramPagePool) {
             this.instagramPagePool.reset();
             this.instagramPagePool = null;
         }
+        if (this.youtubePagePool) {
+            this.youtubePagePool.reset();
+            this.youtubePagePool = null;
+        }
         for (const pool of this.telegramPagePools.values()) {
             pool.reset();
         }
-        this.telegramContexts.clear();
-        this.tgContextPromises.clear();
         this.telegramPagePools.clear();
         log.warn("🔄 Состояние браузера сброшено, следующий запрос создаст новый инстанс");
-    }
-
-    private async getInstagramContext(browser: Browser, authPath: string): Promise<BrowserContext> {
-        if (this.instagramContext) return this.instagramContext;
-        
-        if (this.igContextPromise) {
-            log.info("⏳ Ожидание инициализации Instagram context...");
-            return this.igContextPromise;
-        }
-
-        this.igContextPromise = browser.newContext({
-            storageState: authPath,
-            viewport: { width: 1280, height: 1200 }
-        }).then(ctx => {
-            this.instagramContext = ctx;
-            this.igContextPromise = null;
-            log.info("📸 Instagram shared context создан (кеширование включено)");
-            return ctx;
-        });
-        
-        return this.igContextPromise;
-    }
-
-    private async getTelegramContext(browser: Browser, botId: string, authPath: string): Promise<BrowserContext> {
-        const existing = this.telegramContexts.get(botId);
-        if (existing) return existing;
-
-        const existingPromise = this.tgContextPromises.get(botId);
-        if (existingPromise) return existingPromise;
-
-        const promise = browser.newContext({
-            storageState: authPath,
-            viewport: { width: 1280, height: 1600 },
-        }).then(ctx => {
-            this.telegramContexts.set(botId, ctx);
-            this.tgContextPromises.delete(botId);
-            log.info(`📸 Telegram context для бота ${botId} создан (кеширование включено)`);
-            return ctx;
-        });
-
-        this.tgContextPromises.set(botId, promise);
-        return promise;
     }
 
     public async close(): Promise<void> {
@@ -187,20 +157,12 @@ export class ScreenshotService {
             this.instagramPagePool = null;
             log.info("🗂️ Пул IG сброшен");
         }
-
-        // Закрываем контексты
-        for (const [botId, context] of this.telegramContexts) {
-            await context.close().catch(() => null);
-            log.info(`📸 Telegram context для бота ${botId} закрыт`);
+        if (this.youtubePagePool) {
+            this.youtubePagePool.reset();
+            this.youtubePagePool = null;
+            log.info("🗂️ Пул YT сброшен");
         }
-        this.telegramContexts.clear();
-        this.tgContextPromises.clear();
 
-        if (this.instagramContext) {
-            await this.instagramContext.close().catch(() => null);
-            this.instagramContext = null;
-            log.info("📸 Instagram context закрыт");
-        }
         if (this.sharedBrowser && this.sharedBrowser.isConnected()) {
             await this.sharedBrowser.close();
             this.sharedBrowser = null;
@@ -214,6 +176,10 @@ export class ScreenshotService {
 
     private isInstagramUrl(url: string): boolean {
         return /^https:\/\/www\.instagram\.com\//.test(url);
+    }
+
+    private isYoutubeUrl(url: string): boolean {
+        return /^https:\/\/(www\.)?youtube\.com\/watch|^https:\/\/youtu\.be\//.test(url);
     }
 
     /** Получить или создать пул для Telegram бота (изолированные контексты) */
@@ -235,6 +201,16 @@ export class ScreenshotService {
         }
         return this.instagramPagePool;
     }
+
+    /** Получить или создать пул для YouTube (с Google авторизацией) */
+    private getYoutubePagePool(browser: Browser, authPath: string): PagePool {
+        if (!this.youtubePagePool) {
+            this.youtubePagePool = new PagePool(browser, authPath, { width: 1920, height: 1080 }, this.MAX_CONCURRENT, "YT");
+            log.info(`🗂️ Пул YT создан (макс: ${this.MAX_CONCURRENT}, 1920×1080)`);
+        }
+        return this.youtubePagePool;
+    }
+
     /** Общий паттерн: acquire → Promise.race(work, abort) → release */
     private async executeInPool(
         pool: PagePool,
@@ -274,16 +250,49 @@ export class ScreenshotService {
         return this.executeInPool(pool, (page) => captureInstagramPostScreenshot(page, url, signal), url, signal, reqId);
     }
 
-    public async capture(url: string, user_bot_id?: string, signal?: AbortSignal, reqId?: string): Promise<IPostScreenshotResponse | IErrorCallback> {
+    /** YouTube скриншот: либо timelapse (тест), либо одиночный (прод) */
+    private async captureYoutube(browser: Browser, url: string, signal?: AbortSignal, reqId?: string): Promise<Buffer | Buffer[]> {
+        log.info(`Обработка YouTube URL | Post Url = ${url}${reqId ? ` [ID:${reqId}]` : ''}`);
+        const auth_path = `src/auth/youtube/auth.json`;
+        await ensureYoutubeAuth(auth_path);
+
+        const pool = this.getYoutubePagePool(browser, auth_path);
+        const page = await pool.acquire(signal, reqId);
+        log.info(`🗂️ Вкладка получена для ${url}${reqId ? ` [ID:${reqId}]` : ''}`);
+
+        try {
+            if (SETTINGS.TEST_SCREENSHOTS) {
+                return await captureYoutubeTimelapse(page, url, signal);
+            } else {
+                return await captureYoutubeSingle(page, url, signal);
+            }
+        } finally {
+            pool.release(page);
+            log.info(`🗂️ Слот освобождён (${url})${reqId ? ` [ID:${reqId}]` : ''}`);
+        }
+    }
+
+    public async capture(url: string, user_bot_id?: string, signal?: AbortSignal, reqId?: string): Promise<IPostScreenshotResponse | IYoutubeDebugResponse | IErrorCallback> {
         // Глобальный Promise.race для всего флоу (Playwright + S3)
         const { abortPromise, cleanupAbort } = createAbortRace(signal);
 
-        const workPromise = async (): Promise<IPostScreenshotResponse | IErrorCallback> => {
+        const workPromise = async (): Promise<IPostScreenshotResponse | IYoutubeDebugResponse | IErrorCallback> => {
             const browser = await this.getBrowser();
+
             let screenshot: Buffer;
 
             // 1. Получаем скриншот (внутри executeInPool нет своей гонки, все полагается на внешнюю)
-            if (this.isTelegramUrl(url)) {
+            if (this.isYoutubeUrl(url)) {
+                const result = await this.captureYoutube(browser, url, signal, reqId);
+                
+                // Если мы в режиме теста — возвращаем результат дебага и выходим (как раньше)
+                if (SETTINGS.TEST_SCREENSHOTS && Array.isArray(result)) {
+                    return { success: true, type: "youtube_debug", total: result.length };
+                }
+                
+                // Иначе (продакшн) — продолжаем общий флоу загрузки с одним скриншотом
+                screenshot = result as Buffer;
+            } else if (this.isTelegramUrl(url)) {
                 screenshot = await this.captureTelegram(browser, url, user_bot_id || "1", signal, reqId);
             } else if (this.isInstagramUrl(url)) {
                 screenshot = await this.captureInstagram(browser, url, signal, reqId);
@@ -292,7 +301,6 @@ export class ScreenshotService {
             }
 
             // ЖЕСТКИЙ СТОП для фонового промиса: 
-            // Это нужно, потому что Promise.race не отменяет сам фоновый промис (JS не умеет).
             if (signal?.aborted) throw new Error("ABORTED_BY_CLIENT");
 
             const uploadData = await getUploadLink(signal);
@@ -312,9 +320,20 @@ export class ScreenshotService {
         } catch (error: any) {
             const errorMsg = error.message || String(error);
             log.error(`💥 Ошибка во время выполнения capture | Post Url = ${url} | Error: ${errorMsg}`);
+            
+            let code = 1004; // Default: SCREENSHOT_FAILED
+            
+            if (errorMsg.includes("UPLOAD_LINK") || errorMsg.includes("BLOGIX")) {
+                code = 1005; // Storage/Upload error
+            } else if (errorMsg.includes("TIMEOUT_OR_ERROR")) {
+                code = 1006; // Content wait timeout
+            } else if (errorMsg.includes("Timeout 30000ms exceeded") || errorMsg.includes("page.goto")) {
+                code = 1007; // Navigation timeout (e.g. YouTube heavy load)
+            }
+
             return { 
                 success: false, 
-                code: 1004, 
+                code, 
                 message: `SCREENSHOT_FAILED: ${errorMsg}`
             };
         } finally {

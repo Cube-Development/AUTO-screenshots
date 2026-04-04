@@ -2,6 +2,7 @@ import axios from "axios";
 import fs from "fs";
 import path from "path";
 import { SETTINGS } from "../config";
+import { log } from "../utils";
 
 export const TEST_SCREENS_DIR = path.join("src", "tests", "screenshots", "screens");
 
@@ -27,8 +28,10 @@ export async function uploadScreenshot(url: string, bytes: Buffer, signal?: Abor
       headers: { "Content-Type": "image/png" },
       signal: signal,
     });
-  } catch (error) {
+  } catch (error: any) {
     if (axios.isCancel(error)) throw new Error("ABORTED_BY_CLIENT");
-    throw error;
+    const details = error.response?.data?.message || error.message;
+    log.error(`❌ Screenshot upload failed: ${details}`);
+    throw new Error(`UPLOAD_LINK_FAILED: ${details}`);
   }
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "rimraf dist && tsc",
     "start": "npm run build && node dist/index.js",
-    "auth": "npx tsx src/modules/auth/telegram.auth.ts",
+    "auth:telegram": "npx tsx src/modules/auth/telegram.auth.ts",
+    "auth:youtube": "npx tsx src/modules/auth/youtube.auth.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test:screenshots": "npx ts-node src/tests/screenshots/screenshot-stress-test.ts"
   },

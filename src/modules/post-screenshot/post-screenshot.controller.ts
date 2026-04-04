@@ -30,6 +30,27 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
     // Поддержка отмены со стороны клиента
     const abortController = new AbortController();
     
+    // YouTube — фоновый режим: отвечаем 202 сразу (ТОЛЬКО В ТЕСТОВОМ РЕЖИМЕ)
+    const isYoutube = /^https:\/\/(www\.)?youtube\.com\/watch|^https:\/\/youtu\.be\//.test(post_url);
+    if (isYoutube && SETTINGS.TEST_SCREENSHOTS) {
+        log.info(`▶️ [ID:${reqId}] YouTube запрос принят (TEST_MODE), запускаем timelapse в фоне: ${post_url}`);
+        res.status(202).json({
+            success: true,
+            message: "YouTube timelapse запущен в фоне (debug mode)",
+            reqId,
+        });
+
+        // Фоновая задача — не блокирует ответ
+        postScreenshot(post_url, user_bot_id, abortController.signal, reqId)
+            .then((result) => {
+                log.success(`✅ [ID:${reqId}] YouTube timelapse завершён | Результат: ${JSON.stringify(result)}`);
+            })
+            .catch((error) => {
+                log.error(`❌ [ID:${reqId}] YouTube timelapse ошибка: ${error.message || error}`);
+            });
+        return;
+    }
+
     // Надежный детект отвала клиента в Express
     res.on('close', () => {
         if (!res.writableEnded) {
