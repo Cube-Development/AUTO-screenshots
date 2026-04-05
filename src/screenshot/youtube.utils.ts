@@ -3,6 +3,7 @@ import os from "os";
 import path from "path";
 import { chromium, Page } from "playwright";
 import { log } from "../utils";
+import { ResourceType } from "../type";
 import { TEST_SCREENS_DIR, getCISDateString } from "./utils";
 
 const YT_SCREENS_DIR = path.join(TEST_SCREENS_DIR, "youtube");
@@ -68,7 +69,7 @@ async function dismissConsentBanner(page: Page): Promise<void> {
       const btn = await page.$(sel);
       if (btn) {
         await btn.click();
-        log.info(`🍪 YouTube consent-баннер закрыт (селектор: ${sel})`);
+        log.info({ type: ResourceType.YOUTUBE }, `🍪 YouTube consent-баннер закрыт (селектор: ${sel})`);
         await page.waitForTimeout(1500);
         return;
       }
@@ -80,7 +81,8 @@ async function dismissConsentBanner(page: Page): Promise<void> {
  * Пропускает рекламу YouTube простым способом.
  * Проверяем, есть ли реклама в плеере. Если да — ждём до 15 секунд пока кнопка не станет видимой и кликаем её.
  */
-export async function handleYoutubeAds(page: Page): Promise<void> {
+export async function handleYoutubeAds(page: Page, url?: string, reqId?: string): Promise<void> {
+  const logCtx = { id: reqId, type: ResourceType.YOUTUBE, url };
   try {
     // Проверяем, находится ли плеер в режиме рекламы (быстрая проверка)
     const isAdPlaying = await page.evaluate(() => {
@@ -89,7 +91,7 @@ export async function handleYoutubeAds(page: Page): Promise<void> {
     });
 
     if (isAdPlaying) {
-      log.info("📺 Обнаружена реклама! Ждем кнопку пропуска (до 15 сек)...");
+      log.info(logCtx, "📺 Обнаружена реклама! Ждем кнопку пропуска (до 15 сек)...");
 
       const skipBtnSelectorExtended = ".ytp-skip-ad-button, .ytp-ad-skip-button-container, .ytp-ad-skip-button-modern";
       
@@ -100,17 +102,18 @@ export async function handleYoutubeAds(page: Page): Promise<void> {
       }).catch(() => null);
 
       if (skipBtn) {
-        log.info("🎯 Кнопка 'Пропустить' найдена и видима. Нажимаем!");
+        log.info(logCtx, "🎯 Кнопка 'Пропустить' найдена и видима. Нажимаем!");
         await skipBtn.click({ force: true }).catch(() => {});
         await page.waitForTimeout(2000); // Даем время плееру переключиться на видео
       } else {
-        log.warn("⚠️ Реклама идёт, но кнопка пропуска не стала видимой за 15 секунд");
+        log.warn(logCtx, "⚠️ Реклама идёт, но кнопка пропуска не стала видимой за 15 секунд");
       }
     }
   } catch (err) {
-    log.debug(`ℹ️ Ошибка при проверке/пропуске рекламы: ${err}`);
+    log.debug(logCtx, `ℹ️ Ошибка при проверке/пропуске рекламы: ${err}`);
   }
 }
+
 
 /**
  * Открывает YouTube-видео и делает серию скриншотов каждые 5 секунд в течение 2 минут.
@@ -121,15 +124,17 @@ export async function handleYoutubeAds(page: Page): Promise<void> {
 export async function captureYoutubeTimelapse(
   page: Page,
   url: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  reqId?: string
 ): Promise<Buffer[]> {
+  const logCtx = { id: reqId, type: ResourceType.YOUTUBE, url };
   const videoId = extractVideoId(url);
   const sessionTimestamp = getCISDateString();
   const sessionDir = path.join(YT_SCREENS_DIR, `${sessionTimestamp}_${videoId}`);
   
   fs.mkdirSync(sessionDir, { recursive: true });
 
-  log.info(`▶️ YouTube timelapse | URL: ${url} | Video ID: ${videoId} | Скриншотов: ${TOTAL_SCREENSHOTS}`);
+  log.info(logCtx, `▶️ YouTube timelapse | Video ID: ${videoId} | Скриншотов: ${TOTAL_SCREENSHOTS}`);
 
   // Загрузка страницы
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
@@ -141,15 +146,15 @@ export async function captureYoutubeTimelapse(
   try {
     const htmlContent = await page.content();
     fs.writeFileSync(path.join(sessionDir, "page.html"), htmlContent, "utf-8");
-    log.info(`📄 HTML страницы сохранён: page.html`);
+    log.info(logCtx, `📄 HTML страницы сохранён: page.html`);
   } catch (err) {
-    log.warn(`⚠️ Не удалось сохранить HTML: ${err}`);
+    log.warn(logCtx, `⚠️ Не удалось сохранить HTML: ${err}`);
   }
 
   // Ждём появления плеера и запускаем воспроизведение, если нужно
   try {
     await page.waitForSelector("video, #movie_player", { timeout: 15_000 });
-    log.info("🎬 YouTube плеер найден");
+    log.info(logCtx, "🎬 YouTube плеер найден");
 
     // Пытаемся нажать Play, если видео на паузе
     const playButton = await page.$(".ytp-play-button");
@@ -161,17 +166,17 @@ export async function captureYoutubeTimelapse(
       const isPaused = /Смотреть|Play|Watch/i.test(title) || /Смотреть|Play|Watch/i.test(label);
       
       if (isPaused) {
-        log.info("▶️ Видео на паузе, нажимаю Play...");
+        log.info(logCtx, "▶️ Видео на паузе, нажимаю Play...");
         await playButton.click();
         await page.waitForTimeout(1000); // Даем время на запуск
       }
     }
   } catch (err) {
-    log.warn(`⚠️ Ошибка при подготовке плеера: ${err}`);
+    log.warn(logCtx, `⚠️ Ошибка при подготовке плеера: ${err}`);
   }
 
   // Пропуск встроенной рекламы
-  await handleYoutubeAds(page);
+  await handleYoutubeAds(page, url, reqId);
 
   // Ждем, чтобы кадр точно отрисовался
   await page.waitForTimeout(2000);
@@ -180,7 +185,7 @@ export async function captureYoutubeTimelapse(
 
   for (let i = 0; i < TOTAL_SCREENSHOTS; i++) {
     if (signal?.aborted) {
-      log.warn(`🛑 YouTube timelapse прерван по сигналу на кадре ${i}/${TOTAL_SCREENSHOTS}`);
+      log.warn(logCtx, `🛑 YouTube timelapse прерван по сигналу на кадре ${i}/${TOTAL_SCREENSHOTS}`);
       break;
     }
 
@@ -190,7 +195,7 @@ export async function captureYoutubeTimelapse(
     const buffer = await page.screenshot({ path: filePath });
     buffers.push(buffer);
 
-    log.info(`📸 [${i + 1}/${TOTAL_SCREENSHOTS}] Скриншот сохранён: ${fileName}`);
+    log.info(logCtx, `📸 [${i + 1}/${TOTAL_SCREENSHOTS}] Скриншот сохранён: ${fileName}`);
 
     // Не ждём после последнего скриншота
     if (i < TOTAL_SCREENSHOTS - 1) {
@@ -198,7 +203,7 @@ export async function captureYoutubeTimelapse(
     }
   }
 
-  log.success(`✅ YouTube timelapse завершён | ${buffers.length} скриншотов → ${sessionDir}`);
+  log.success(logCtx, `✅ YouTube timelapse завершён | ${buffers.length} скриншотов → ${sessionDir}`);
   return buffers;
 }
 
@@ -209,11 +214,10 @@ export async function captureYoutubeTimelapse(
 export async function captureYoutubeSingle(
   page: Page,
   url: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  reqId?: string
 ): Promise<Buffer> {
-  const videoId = extractVideoId(url);
-  log.info(`📸 YouTube Single Shot | URL: ${url} | Video ID: ${videoId}`);
-
+  const logCtx = { id: reqId, type: ResourceType.YOUTUBE, url };
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
   await page.waitForTimeout(2000);
   
@@ -232,11 +236,11 @@ export async function captureYoutubeSingle(
       }
     }
   } catch (err) {
-    log.warn(`⚠️ Ошибка при подготовке плеера: ${err}`);
+    log.warn(logCtx, `⚠️ Ошибка при подготовке плеера: ${err}`);
   }
 
   // Обработка возможной рекламы
-  await handleYoutubeAds(page);
+  await handleYoutubeAds(page, url, reqId);
 
   // Ждем, чтобы кадр точно отрисовался
   await page.waitForTimeout(2000);
@@ -244,6 +248,6 @@ export async function captureYoutubeSingle(
   if (signal?.aborted) throw new Error("Aborted");
 
   const buffer = await page.screenshot();
-  log.success(`✅ YouTube Single Shot готов`);
+  log.info(logCtx, `✅ Скриншот сделан`);
   return buffer;
 }

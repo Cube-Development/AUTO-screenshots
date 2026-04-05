@@ -45,6 +45,9 @@ TEST_SCREENSHOTS=
 MAX_SCREENSHOT_LIMIT=
 PORT=
 
+SEND_TO_TELEGRAM=
+TG_BOT_TOKEN=
+TG_CHAT_ID=
 ```
 
 ### Описание переменных
@@ -57,6 +60,9 @@ PORT=
 | `TEST_SCREENSHOTS` | Флаг для сохраниния скриншотов | ❌ |
 | `MAX_SCREENSHOT_LIMIT` | Максимальное количество скриншотов | ❌ |
 | `PORT` | Порт сервера | ❌ |
+| `SEND_TO_TELEGRAM` | Включить отправку копии скриншотов в ТГ | ❌ |
+| `TG_BOT_TOKEN` | Токен бота для уведомлений | ❌ |
+| `TG_CHAT_ID` | ID чата, куда присылать скриншоты | ❌ |
 
 ## Команды
 

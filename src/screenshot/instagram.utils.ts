@@ -5,6 +5,7 @@ import { chromium, Page } from "playwright";
 import { log } from "../utils";
 import { SETTINGS } from "../config";
 import { IErrorCallback, IPostCapture } from "../type";
+import { ResourceType } from "../type";
 import { TEST_SCREENS_DIR, getCISDateString } from "./utils";
 
 export async function ensureInstagramAuth(auth_path: string) {
@@ -50,7 +51,8 @@ export async function ensureInstagramAuth(auth_path: string) {
   console.log(`Instagram auth сохранён в: ${auth_path}`);
 }
 
-export async function captureInstagramPostScreenshot(page: Page, postUrl: string, signal?: AbortSignal): Promise<Buffer> {
+export async function captureInstagramPostScreenshot(page: Page, postUrl: string, signal?: AbortSignal, reqId?: string): Promise<Buffer> {
+  const logCtx = { id: reqId, type: ResourceType.INSTAGRAM, url: postUrl };
   // Подписка на аборт: мгновенно убиваем все ожидания на странице
   const abortNavigation = () => { page.goto('about:blank').catch(() => {}); };
   signal?.addEventListener('abort', abortNavigation, { once: true });
@@ -80,12 +82,12 @@ export async function captureInstagramPostScreenshot(page: Page, postUrl: string
       return route.continue();
     });
 
-    log.info(`Переход на URL: ${normalizedUrl}`);
+    log.info(logCtx, `Переход на URL: ${normalizedUrl}`);
     try {
       await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
     } catch (navError: any) {
       if (navError.name === 'TimeoutError') {
-        log.error(`❌ Страница не загрузилась за 30с: ${normalizedUrl}`);
+        log.error(logCtx, `❌ Страница не загрузилась за 30с: ${normalizedUrl}`);
         throw new Error("PAGE_LOAD_TIMEOUT");
       }
       throw navError;
@@ -111,13 +113,13 @@ export async function captureInstagramPostScreenshot(page: Page, postUrl: string
     const privateH2 = await page.$('h2:has-text("This account is private")');
 
     if (privateH2) {
-      log.info(`Аккаунт приватный | Post Url = ${normalizedUrl}`);
+      log.info(logCtx, `Аккаунт приватный`);
       throw new Error("PRIVATE_ACCOUNT_INSTAGRAM");
     }
 
     await closeInstagramDialogIfExists(page);
 
-    log.info("Ожидание обложки (Video Cover)...");
+    log.info(logCtx, "Ожидание обложки (Video Cover)...");
     try {
       await page.waitForFunction(() => {
         const getImgInfo = (img: HTMLImageElement) => `src: ${img.src.substring(0, 50)}..., complete: ${img.complete}, naturalWidth: ${img.naturalWidth}`;
@@ -159,9 +161,9 @@ export async function captureInstagramPostScreenshot(page: Page, postUrl: string
 
         return false;
       }, null, { timeout: 10000, polling: 200 });
-      log.info("✅ Обложка/Контент загружены");
+      log.info(logCtx, "✅ Обложка/Контент загружены");
     } catch (e: any) {
-      log.warn(`⚠️ Тайм-аут ожидания обложки (10с): ${e.message}. Делаем скриншот как есть.`);
+      log.warn({ ...logCtx, err: e.message }, `⚠️ Тайм-аут ожидания обложки (10с). Делаем скриншот как есть.`);
     }
 
     // Скрываем текст ошибки видео (версия V8)
@@ -226,14 +228,14 @@ export async function captureInstagramPostScreenshot(page: Page, postUrl: string
           });
           
           fs.writeFileSync(path.join(htmlDir, `${fileName}.html`), formatted);
-          log.info(`📄 HTML (Body + Beautify) дамп сохранен: ${fileName}.html`);
+          log.info(logCtx, `📄 HTML (Body + Beautify) дамп сохранен: ${fileName}.html`);
       } catch (err) {
-          log.error(`Ошибка при сохранении HTML: ${err}`);
+          log.error({ ...logCtx, err }, `Ошибка при сохранении HTML`);
       }
     }
 
     const buffer = await page.screenshot(screenshotOptions);
-    log.info(`✅ Скриншот успешно сделан | Post url: ${normalizedUrl}`);
+    log.info(logCtx, `✅ Скриншот сделан`);
     return buffer;
   } finally {
     signal?.removeEventListener('abort', abortNavigation);

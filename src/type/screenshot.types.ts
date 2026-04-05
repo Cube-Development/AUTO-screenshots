@@ -14,3 +14,10 @@ export interface IYoutubeDebugResponse {
     type: 'youtube_debug';
     total: number;
 }
+
+export enum ResourceType {
+  YOUTUBE = 'YT',
+  TELEGRAM = 'TG',
+  INSTAGRAM = 'IG',
+  UNKNOWN = 'unknown'
+}

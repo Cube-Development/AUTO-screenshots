@@ -1,40 +1,60 @@
-import chalk from 'chalk';
+import pino from 'pino';
 
-const getTimestamp = () => {
-  const now = new Date();
-  const time = now.toLocaleTimeString('ru-RU', { hour12: false });
-  const date = now.toLocaleDateString('ru-RU');
-  return `${date} ${time}`;
-};
-
-const formatMessage = (level: string, icon: string, color: any, message: string) => {
-  const timestamp = chalk.gray(`[${getTimestamp()}]`);
-  const levelTag = color(`[${level.padEnd(7)}]`);
-  return `${timestamp} ${levelTag} ${icon} ${message}`;
-};
+export const pinoLogger = pino({
+  level: process.env.LOG_LEVEL || 'debug',
+  // transport: {
+  //   target: 'pino-pretty',
+  //   options: {
+  //     colorize: true,
+  //   },
+  // },
+  timestamp: pino.stdTimeFunctions.isoTime,
+  base: null,
+  formatters: {
+    level: (label) => {
+      return { level: label };
+    },
+  },
+});
 
 export const log = {
-  info: (message: string) => 
-    console.log(formatMessage('INFO', '📋', chalk.blue, message)),
+  info: (objOrMsg: any, msg?: string) => 
+    msg ? pinoLogger.info(objOrMsg, msg) : pinoLogger.info(objOrMsg),
     
-  error: (message: string) => 
-    console.error(formatMessage('ERROR', '💥', chalk.red, chalk.red(message))),
+  error: (objOrMsg: any, msg?: string) => {
+    if (msg) {
+        pinoLogger.error({ ...objOrMsg, category: '❌ ERROR' }, msg);
+    } else {
+        pinoLogger.error({ category: '❌ ERROR' }, objOrMsg);
+    }
+  },
     
-  warn: (message: string) => 
-    console.warn(formatMessage('WARN', '⚠️', chalk.yellow, chalk.yellow(message))),
+  warn: (objOrMsg: any, msg?: string) => {
+    if (msg) {
+        pinoLogger.warn({ ...objOrMsg, category: '⚠️ WARN' }, msg);
+    } else {
+        pinoLogger.warn({ category: '⚠️ WARN' }, objOrMsg);
+    }
+  },
     
-  success: (message: string) => 
-    console.log(formatMessage('SUCCESS', '✅', chalk.green, chalk.green(message))),
+  success: (objOrMsg: any, msg?: string) => {
+    if (msg) {
+        pinoLogger.info({ ...objOrMsg, category: '✅ SUCCESS' }, msg);
+    } else {
+        pinoLogger.info({ category: '✅ SUCCESS' }, objOrMsg);
+    }
+  },
     
-  debug: (message: string) => 
-    console.log(formatMessage('DEBUG', '🔍', chalk.magenta, chalk.dim(message))),
+  debug: (objOrMsg: any, msg?: string) => 
+    msg ? pinoLogger.debug(objOrMsg, msg) : pinoLogger.debug(objOrMsg),
 
-  websocket: (message: string) => 
-    console.log(formatMessage('WS', '🔌', chalk.cyan, message)),
+  api: (objOrMsg: any, msg?: string) => {
+    if (msg) {
+        pinoLogger.info({ ...objOrMsg, category: 'API' }, msg);
+    } else {
+        pinoLogger.info({ category: 'API' }, objOrMsg);
+    }
+  },
 
-  api: (message: string) => 
-    console.log(formatMessage('API', '🌐', chalk.blue, message)),
-
-  crypto: (message: string) => 
-    console.log(formatMessage('CRYPTO', '🔐', chalk.magenta, message))
 };
+

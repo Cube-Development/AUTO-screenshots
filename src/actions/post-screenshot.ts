@@ -13,8 +13,8 @@ import {
     handleTelegramLink,
     uploadScreenshot
 } from "../screenshot";
-import { IErrorCallback, IPostScreenshotResponse, IYoutubeDebugResponse } from "../type";
-import { log, PagePool } from "../utils";
+import { IErrorCallback, IPostScreenshotResponse, IYoutubeDebugResponse, ResourceType } from "../type";
+import { log, PagePool, determineResourceType } from "../utils";
 
 /** Утилита для создания прерывающего промиса (гонки) */
 function createAbortRace(signal?: AbortSignal) {
@@ -170,18 +170,6 @@ export class ScreenshotService {
         }
     }
 
-    private isTelegramUrl(url: string): boolean {
-        return /^https:\/\/t\.me\//.test(url);
-    }
-
-    private isInstagramUrl(url: string): boolean {
-        return /^https:\/\/www\.instagram\.com\//.test(url);
-    }
-
-    private isYoutubeUrl(url: string): boolean {
-        return /^https:\/\/(www\.)?youtube\.com\/watch|^https:\/\/youtu\.be\//.test(url);
-    }
-
     /** Получить или создать пул для Telegram бота (изолированные контексты) */
     private getTelegramPagePool(browser: Browser, botId: string, authPath: string): PagePool {
         let pool = this.telegramPagePools.get(botId);
@@ -219,56 +207,60 @@ export class ScreenshotService {
         signal?: AbortSignal,
         reqId?: string
     ): Promise<Buffer> {
+        const logCtx = { url, id: reqId };
         const page = await pool.acquire(signal, reqId);
-        log.info(`🗂️ Вкладка получена для ${url}${reqId ? ` [ID:${reqId}]` : ''}`);
+        // log.info(logCtx, `🗂️ Вкладка получена для обработки`);
 
         try {
             return await workFn(page);
         } finally {
             pool.release(page);
-            log.info(`🗂️ Слот освобождён (${url})${reqId ? ` [ID:${reqId}]` : ''}`);
+            // log.info(logCtx, `🗂️ Слот освобождён`);
         }
     }
 
     /** Подготовка и захват скриншота Telegram */
     private async captureTelegram(browser: Browser, url: string, botId: string, signal?: AbortSignal, reqId?: string): Promise<Buffer> {
-        log.info(`Обработка Telegram URL | Post Url = ${url} | User Bot ID = ${botId}${reqId ? ` [ID:${reqId}]` : ''}`);
+        const logCtx = { id: reqId, type: ResourceType.TELEGRAM, url, botId };
+        log.info(logCtx, `Обработка Telegram URL`);
         const auth_path = `src/auth/telegram/user_bot_${botId}/auth.json`;
         await ensureTelegramAuth(auth_path);
 
         const pool = this.getTelegramPagePool(browser, botId, auth_path);
-        return this.executeInPool(pool, (page) => handleTelegramLink(page, url, signal), url, signal, reqId);
+        return this.executeInPool(pool, (page) => handleTelegramLink(page, url, signal, reqId), url, signal, reqId);
     }
 
     /** Подготовка и захват скриншота Instagram */
     private async captureInstagram(browser: Browser, url: string, signal?: AbortSignal, reqId?: string): Promise<Buffer> {
-        log.info(`Обработка Instagram URL | Post Url = ${url}`);
+        const logCtx = { id: reqId, type: ResourceType.INSTAGRAM, url };
+        log.info(logCtx, `Обработка Instagram URL`);
         const auth_path = `src/auth/instagram/auth.json`;
         await ensureInstagramAuth(auth_path);
 
         const pool = this.getInstagramPagePool(browser, auth_path);
-        return this.executeInPool(pool, (page) => captureInstagramPostScreenshot(page, url, signal), url, signal, reqId);
+        return this.executeInPool(pool, (page) => captureInstagramPostScreenshot(page, url, signal, reqId), url, signal, reqId);
     }
 
     /** YouTube скриншот: либо timelapse (тест), либо одиночный (прод) */
     private async captureYoutube(browser: Browser, url: string, signal?: AbortSignal, reqId?: string): Promise<Buffer | Buffer[]> {
-        log.info(`Обработка YouTube URL | Post Url = ${url}${reqId ? ` [ID:${reqId}]` : ''}`);
+        const logCtx = { id: reqId, type: ResourceType.YOUTUBE, url };
+        log.info(logCtx, `Обработка YouTube URL`);
         const auth_path = `src/auth/youtube/auth.json`;
         await ensureYoutubeAuth(auth_path);
 
         const pool = this.getYoutubePagePool(browser, auth_path);
         const page = await pool.acquire(signal, reqId);
-        log.info(`🗂️ Вкладка получена для ${url}${reqId ? ` [ID:${reqId}]` : ''}`);
+        // log.info(logCtx, `🗂️ Вкладка получена для обработки`);
 
         try {
             if (SETTINGS.TEST_SCREENSHOTS) {
-                return await captureYoutubeTimelapse(page, url, signal);
+                return await captureYoutubeTimelapse(page, url, signal, reqId);
             } else {
-                return await captureYoutubeSingle(page, url, signal);
+                return await captureYoutubeSingle(page, url, signal, reqId);
             }
         } finally {
             pool.release(page);
-            log.info(`🗂️ Слот освобождён (${url})${reqId ? ` [ID:${reqId}]` : ''}`);
+            // log.info(logCtx, `🗂️ Слот освобождён`);
         }
     }
 
@@ -280,9 +272,10 @@ export class ScreenshotService {
             const browser = await this.getBrowser();
 
             let screenshot: Buffer;
+            const resourceType = determineResourceType(url);
 
             // 1. Получаем скриншот (внутри executeInPool нет своей гонки, все полагается на внешнюю)
-            if (this.isYoutubeUrl(url)) {
+            if (resourceType === ResourceType.YOUTUBE) {
                 const result = await this.captureYoutube(browser, url, signal, reqId);
                 
                 // Если мы в режиме теста — возвращаем результат дебага и выходим (как раньше)
@@ -292,9 +285,9 @@ export class ScreenshotService {
                 
                 // Иначе (продакшн) — продолжаем общий флоу загрузки с одним скриншотом
                 screenshot = result as Buffer;
-            } else if (this.isTelegramUrl(url)) {
+            } else if (resourceType === ResourceType.TELEGRAM) {
                 screenshot = await this.captureTelegram(browser, url, user_bot_id || "1", signal, reqId);
-            } else if (this.isInstagramUrl(url)) {
+            } else if (resourceType === ResourceType.INSTAGRAM) {
                 screenshot = await this.captureInstagram(browser, url, signal, reqId);
             } else {
                 return { success: false, code: 1003, message: "UNSUPPORTED_URL" };
@@ -308,9 +301,12 @@ export class ScreenshotService {
             // ЖЕСТКИЙ СТОП перед долгой загрузкой
             if (signal?.aborted) throw new Error("ABORTED_BY_CLIENT");
 
-            log.info(`Загружаем скриншот в хранилище... | Post Url = ${url} | File name = ${uploadData.file_name}`);
+            const type = resourceType;
+            const logCtx = { id: reqId, type, url };
+
+            log.info({ ...logCtx, fileName: uploadData.file_name }, `Загружаем скриншот в хранилище...`);
             await uploadScreenshot(uploadData.url, screenshot, signal);
-            log.success(`✅ Скриншот готов и загружен | Post Url = ${url}`);
+            log.success(logCtx, `Скриншот готов и загружен`);
 
             return { success: true, file_name: uploadData.file_name, buffer: screenshot };
         };
@@ -319,7 +315,10 @@ export class ScreenshotService {
             return await Promise.race([workPromise(), abortPromise]);
         } catch (error: any) {
             const errorMsg = error.message || String(error);
-            log.error(`💥 Ошибка во время выполнения capture | Post Url = ${url} | Error: ${errorMsg}`);
+            const type = determineResourceType(url);
+            const logCtx = { id: reqId, type, url };
+            
+            log.error({ ...logCtx, err: errorMsg }, `Ошибка во время выполнения capture`);
             
             let code = 1004; // Default: SCREENSHOT_FAILED
             

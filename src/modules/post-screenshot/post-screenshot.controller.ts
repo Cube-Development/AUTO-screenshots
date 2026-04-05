@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { postScreenshot } from "../../services";
-import { log } from "../../utils";
+import { log, determineResourceType } from "../../utils";
 import { SETTINGS } from "../../config";
 import { notifyTelegram } from "../../services/telegram-notify";
 import crypto from "crypto";
-import { IPostScreenshotResponse } from "../../type";
+import { IPostScreenshotResponse, ResourceType } from "../../type";
 import { PostScreenShotSchema } from "./dto";
 
 export const createPostScreenshot = async (req: Request, res: Response) => {
@@ -31,9 +31,12 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
     const abortController = new AbortController();
     
     // YouTube — фоновый режим: отвечаем 202 сразу (ТОЛЬКО В ТЕСТОВОМ РЕЖИМЕ)
-    const isYoutube = /^https:\/\/(www\.)?youtube\.com\/watch|^https:\/\/youtu\.be\//.test(post_url);
+    const type = determineResourceType(post_url);
+    const isYoutube = type === ResourceType.YOUTUBE;
+    const logCtx = { id: reqId, type, url: post_url };
+
     if (isYoutube && SETTINGS.TEST_SCREENSHOTS) {
-        log.info(`▶️ [ID:${reqId}] YouTube запрос принят (TEST_MODE), запускаем timelapse в фоне: ${post_url}`);
+        log.info(logCtx, `YouTube запрос принят (TEST_MODE), запускаем timelapse в фоне`);
         res.status(202).json({
             success: true,
             message: "YouTube timelapse запущен в фоне (debug mode)",
@@ -43,10 +46,10 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
         // Фоновая задача — не блокирует ответ
         postScreenshot(post_url, user_bot_id, abortController.signal, reqId)
             .then((result) => {
-                log.success(`✅ [ID:${reqId}] YouTube timelapse завершён | Результат: ${JSON.stringify(result)}`);
+                log.success(logCtx, `YouTube timelapse завершён`);
             })
             .catch((error) => {
-                log.error(`❌ [ID:${reqId}] YouTube timelapse ошибка: ${error.message || error}`);
+                log.error({ ...logCtx, err: error.message || error }, `YouTube timelapse ошибка`);
             });
         return;
     }
@@ -54,7 +57,7 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
     // Надежный детект отвала клиента в Express
     res.on('close', () => {
         if (!res.writableEnded) {
-            log.warn(`⚠️ [ID:${reqId}] Соединение закрыто клиентом до завершения. Triggering AbortSignal...`);
+            log.warn(logCtx, `Соединение закрыто клиентом до завершения. Triggering AbortSignal...`);
             abortController.abort();
         }
     });
@@ -62,7 +65,7 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
     // Дублирующая проверка на случай жестких обрывов
     req.socket.on('error', () => {
         if (!res.writableEnded) {
-            log.warn(`⚠️ [ID:${reqId}] Ошибка сокета клиента. Triggering AbortSignal...`);
+            log.warn(logCtx, `Ошибка сокета клиента. Triggering AbortSignal...`);
             abortController.abort();
         }
     });
@@ -73,7 +76,7 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
         // --- ЗАЩИТА ОТ ДУБЛИЙ (если клиент отвалился пока обрабатывался Playwright) ---
         // Проверяем и сигнал, и состояние сокета
         if (abortController.signal.aborted || req.socket.destroyed) {
-            log.warn(`🚫 [ID:${reqId}] Запрос был отменён клиентом, пропускаем отправку результата`);
+            log.warn(logCtx, `Запрос был отменён клиентом, пропускаем отправку результата`);
             return;
         }
 
@@ -84,7 +87,7 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
         // Уведомление в ТГ теперь только здесь, ПОСЛЕ всех проверок на отмену
         if (SETTINGS.SEND_TO_TELEGRAM && result.buffer) {
             notifyTelegram(result.buffer, post_url, result.file_name);
-            log.info(`📩 [ID:${reqId}] Уведомление успешно отправлено в Telegram`);
+            log.info(logCtx, `Уведомление успешно отправлено в Telegram`);
         }
 
         res.json({
@@ -95,7 +98,7 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
     } catch (error: any) {
         if (req.socket.destroyed) return;
 
-        log.error(`❌ Ошибка создания скриншота | Ссылка на пост: ${post_url} | Message: ${JSON.stringify(error)}`);
+        log.error({ ...logCtx, err: error.message || String(error) }, `Ошибка создания скриншота`);
 
         res.status(error?.status || 500).json({
             success: false,

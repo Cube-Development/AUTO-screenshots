@@ -4,6 +4,7 @@ import path from "path";
 import { chromium, Page } from "playwright";
 import { log } from "../utils";
 import { SETTINGS } from "../config";
+import { ResourceType } from "../type";
 import { TEST_SCREENS_DIR, getCISDateString } from "./utils";
 
 export function buildWebHrefFromTgaddr(tgaddr: string) {
@@ -66,7 +67,8 @@ export async function closeModalIfExists(page: Page) {
   } catch {}
 }
 
-export async function handleTelegramLink(page: Page, link: string, signal?: AbortSignal): Promise<Buffer> {
+export async function handleTelegramLink(page: Page, link: string, signal?: AbortSignal, reqId?: string): Promise<Buffer> {
+  const logCtx = { id: reqId, type: ResourceType.TELEGRAM, url: link };
   // Подписка на аборт: мгновенно убиваем все ожидания на странице
   const abortNavigation = () => { page.goto('about:blank').catch(() => {}); };
   signal?.addEventListener('abort', abortNavigation, { once: true });
@@ -75,15 +77,15 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
     let target = tryResolveDirectTelegramKLink(link);
     
     if (target) {
-      log.info(`[FastPath] Прямая ссылка: ${target}`);
+      log.info(logCtx, `[FastPath] Прямая ссылка: ${target}`);
     } else {
-      log.info(`[SlowPath] Открываю: ${link}`);
+      log.info(logCtx, `[SlowPath] Открываю: ${link}`);
       await page.goto(link, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(500);
 
       const btn = await page.$("a.tgme_action_web_button, a.tgme_action_button_new, a.tgme_action_button");
       if (!btn) {
-        log.warn("Кнопка 'Open in Web' не найдена.");
+        log.warn(logCtx, "Кнопка 'Open in Web' не найдена.");
         await page.waitForTimeout(2000);
         return await page.screenshot({ fullPage: true });
       }
@@ -105,13 +107,13 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
 
     if (!target) throw new Error("Не удалось определить целевой URL.");
 
-    log.info(`Перехожу на: ${target}`);
+    log.info(logCtx, `Перехожу на: ${target}`);
     await page.goto(target, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => null);
     
     await page.waitForTimeout(1000);
     await closeModalIfExists(page);
 
-    log.info(`Ожидание отрисовки контента сообщения... | Post url = ${link}`);
+    log.info(logCtx, `Ожидание отрисовки контента сообщения...`);
     try {
       await page.waitForFunction(() => {
           const selectors = [
@@ -130,9 +132,9 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
       }, null, { timeout: 30000 });
       
       await page.waitForTimeout(3000);
-      log.info(`✅ Контент готов для ${link}`);
+      log.info(logCtx, `✅ Контент готов`);
     } catch (e: any) {
-      log.error(`⚠️ Тайм-аут или ошибка ожидания контента | Post url: ${link} | Error: ${e.message}`);
+      log.error({ ...logCtx, err: e.message }, `⚠️ Тайм-аут или ошибка ожидания контента`);
       throw new Error(`TIMEOUT_OR_ERROR: Ошибка ожидания контента`);
     }
 
@@ -144,7 +146,7 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
     }
 
     const buffer = await page.screenshot(screenshotOptions);
-    log.info(`✅ Скриншот успешно сделан | Post url: ${link}`);
+    log.info(logCtx, `✅ Скриншот сделан`);
     
     return buffer;
   } finally {
