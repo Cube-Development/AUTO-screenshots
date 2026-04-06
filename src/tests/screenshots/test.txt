@@ -1,0 +1,194 @@
+ D:\Projects\services\auto-screenshots> npm run test:screenshots
+
+> auto-screenshots@1.0.0 test:screenshots
+> npx ts-node src/tests/screenshots/screenshot-stress-test.ts
+
+[03.04.2026 01:31:23] [INFO   ] 📋 🔥 Starting Stress Test: 35 parallel requests...
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 1] 🚀 Отправлен запрос: https://t.me/if_market_news/80202
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 2] 🚀 Отправлен запрос: https://t.me/if_market_news/80203
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 3] 🚀 Отправлен запрос: https://t.me/if_market_news/80204
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 4] 🚀 Отправлен запрос: https://t.me/if_market_news/80205
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 5] 🚀 Отправлен запрос: https://t.me/devsp/5540
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 6] 🚀 Отправлен запрос: https://t.me/devsp/5541
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 7] 🚀 Отправлен запрос: https://t.me/devsp/5542
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 8] 🚀 Отправлен запрос: https://t.me/devsp/5543
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 9] 🚀 Отправлен запрос: https://t.me/devsp/5544
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 10] 🚀 Отправлен запрос: https://t.me/uzbekfintech/3470
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 11] 🚀 Отправлен запрос: https://t.me/uzbekfintech/3471
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 12] 🚀 Отправлен запрос: https://t.me/uzbekfintech/3472
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 13] 🚀 Отправлен запрос: https://t.me/uzbekfintech/3473
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 14] 🚀 Отправлен запрос: https://t.me/uzbekfintech/3474
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 15] 🚀 Отправлен запрос: https://t.me/ru2ch/167316
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 16] 🚀 Отправлен запрос: https://t.me/ru2ch/167317
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 17] 🚀 Отправлен запрос: https://t.me/ru2ch/167318
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 18] 🚀 Отправлен запрос: https://t.me/ru2ch/167319
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 19] 🚀 Отправлен запрос: https://t.me/ru2ch/167320
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 20] 🚀 Отправлен запрос: https://t.me/abuwtf/35610
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 21] 🚀 Отправлен запрос: https://t.me/abuwtf/35611
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 22] 🚀 Отправлен запрос: https://t.me/abuwtf/35612
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 23] 🚀 Отправлен запрос: https://t.me/abuwtf/35613
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 24] 🚀 Отправлен запрос: https://t.me/abuwtf/35614
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 25] 🚀 Отправлен запрос: https://t.me/if_market_news/80201
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 26] 🚀 Отправлен запрос: https://t.me/if_market_news/80202
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 27] 🚀 Отправлен запрос: https://t.me/if_market_news/80203
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 28] 🚀 Отправлен запрос: https://t.me/if_market_news/80204
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 29] 🚀 Отправлен запрос: https://t.me/if_market_news/80205
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 30] 🚀 Отправлен запрос: https://t.me/devsp/5540
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 31] 🚀 Отправлен запрос: https://t.me/devsp/5541
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 32] 🚀 Отправлен запрос: https://t.me/devsp/5542
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 33] 🚀 Отправлен запрос: https://t.me/devsp/5543
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 34] 🚀 Отправлен запрос: https://t.me/devsp/5544
+[03.04.2026 01:31:23] [INFO   ] 📋 [Req 35] 🚀 Отправлен запрос: https://t.me/uzbekfintech/3470
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5540","user_bot_id":"7487149368"} | Delay: 1493
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5541","user_bot_id":"7487149368"} | Delay: 1801
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 1987
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5543","user_bot_id":"7487149368"} | Delay: 2814
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 1694
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/uzbekfintech/3470","user_bot_id":"7487149368"} | Delay: 2259
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 1429
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/uzbekfintech/3472","user_bot_id":"7487149368"} | Delay: 1010
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/uzbekfintech/3473","user_bot_id":"7487149368"} | Delay: 2211
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/uzbekfintech/3474","user_bot_id":"7487149368"} | Delay: 1459
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/ru2ch/167316","user_bot_id":"7487149368"} | Delay: 1501
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/ru2ch/167317","user_bot_id":"7487149368"} | Delay: 2834
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/ru2ch/167318","user_bot_id":"7487149368"} | Delay: 1606
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/ru2ch/167319","user_bot_id":"7487149368"} | Delay: 1213
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/ru2ch/167320","user_bot_id":"7487149368"} | Delay: 1769
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/abuwtf/35610","user_bot_id":"7487149368"} | Delay: 1792
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/abuwtf/35611","user_bot_id":"7487149368"} | Delay: 2805
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/abuwtf/35612","user_bot_id":"7487149368"} | Delay: 1178
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/abuwtf/35613","user_bot_id":"7487149368"} | Delay: 1812
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 2365
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/if_market_news/80201","user_bot_id":"7487149368"} | Delay: 1423
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/if_market_news/80202","user_bot_id":"7487149368"} | Delay: 1138
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/if_market_news/80203","user_bot_id":"7487149368"} | Delay: 1556
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/if_market_news/80204","user_bot_id":"7487149368"} | Delay: 1613
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/if_market_news/80205","user_bot_id":"7487149368"} | Delay: 2369
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5541","user_bot_id":"7487149368"} | Delay: 2296
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5540","user_bot_id":"7487149368"} | Delay: 1427
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 1250
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5543","user_bot_id":"7487149368"} | Delay: 2154
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 2854
+[03.04.2026 01:31:23] [INFO   ] 📋 [Retry] Попытка 1 для запроса | {"post_url":"https://t.me/uzbekfintech/3470","user_bot_id":"7487149368"} | Delay: 2633
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 1929
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 1485
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/if_market_news/80201","user_bot_id":"7487149368"} | Delay: 1586
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5540","user_bot_id":"7487149368"} | Delay: 1570
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/uzbekfintech/3474","user_bot_id":"7487149368"} | Delay: 2413
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5540","user_bot_id":"7487149368"} | Delay: 2912
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/ru2ch/167316","user_bot_id":"7487149368"} | Delay: 1224
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/if_market_news/80203","user_bot_id":"7487149368"} | Delay: 2564
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/ru2ch/167318","user_bot_id":"7487149368"} | Delay: 1229
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/if_market_news/80204","user_bot_id":"7487149368"} | Delay: 2956
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 2200
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/ru2ch/167320","user_bot_id":"7487149368"} | Delay: 1755
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5541","user_bot_id":"7487149368"} | Delay: 2113
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/abuwtf/35610","user_bot_id":"7487149368"} | Delay: 2742
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/abuwtf/35613","user_bot_id":"7487149368"} | Delay: 2014
+[03.04.2026 01:31:25] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 1129
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 2837
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/if_market_news/80205","user_bot_id":"7487149368"} | Delay: 1745
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/uzbekfintech/3470","user_bot_id":"7487149368"} | Delay: 1423
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/ru2ch/167316","user_bot_id":"7487149368"} | Delay: 2359
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5543","user_bot_id":"7487149368"} | Delay: 2186
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/abuwtf/35611","user_bot_id":"7487149368"} | Delay: 2211
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/ru2ch/167317","user_bot_id":"7487149368"} | Delay: 1807
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/ru2ch/167318","user_bot_id":"7487149368"} | Delay: 1781
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 2 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 1092
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 2082
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/devsp/5540","user_bot_id":"7487149368"} | Delay: 2827
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/if_market_news/80201","user_bot_id":"7487149368"} | Delay: 1474
+[03.04.2026 01:31:26] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 2212
+[03.04.2026 01:31:27] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 1308
+[03.04.2026 01:31:27] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/devsp/5541","user_bot_id":"7487149368"} | Delay: 2130
+[03.04.2026 01:31:27] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 2095
+[03.04.2026 01:31:27] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/uzbekfintech/3470","user_bot_id":"7487149368"} | Delay: 1195
+[03.04.2026 01:31:27] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/if_market_news/80205","user_bot_id":"7487149368"} | Delay: 2088
+[03.04.2026 01:31:27] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/if_market_news/80203","user_bot_id":"7487149368"} | Delay: 2366
+[03.04.2026 01:31:28] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/ru2ch/167318","user_bot_id":"7487149368"} | Delay: 2978
+[03.04.2026 01:31:28] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/ru2ch/167317","user_bot_id":"7487149368"} | Delay: 1013
+[03.04.2026 01:31:28] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/devsp/5543","user_bot_id":"7487149368"} | Delay: 2363
+[03.04.2026 01:31:28] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 1400
+[03.04.2026 01:31:28] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/abuwtf/35611","user_bot_id":"7487149368"} | Delay: 1226
+[03.04.2026 01:31:28] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/ru2ch/167316","user_bot_id":"7487149368"} | Delay: 1996
+[03.04.2026 01:31:29] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 1126
+[03.04.2026 01:31:29] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 1491
+[03.04.2026 01:31:29] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/uzbekfintech/3470","user_bot_id":"7487149368"} | Delay: 1451
+[03.04.2026 01:31:29] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 1708
+[03.04.2026 01:31:30] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/if_market_news/80205","user_bot_id":"7487149368"} | Delay: 1100
+[03.04.2026 01:31:30] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/abuwtf/35611","user_bot_id":"7487149368"} | Delay: 1831
+[03.04.2026 01:31:30] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 2001
+[03.04.2026 01:31:30] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 2431
+[03.04.2026 01:31:30] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/if_market_news/80203","user_bot_id":"7487149368"} | Delay: 1018
+[03.04.2026 01:31:31] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/if_market_news/80205","user_bot_id":"7487149368"} | Delay: 1671
+[03.04.2026 01:31:31] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/devsp/5543","user_bot_id":"7487149368"} | Delay: 1476
+[03.04.2026 01:31:31] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/if_market_news/80203","user_bot_id":"7487149368"} | Delay: 2641
+[03.04.2026 01:31:31] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/ru2ch/167318","user_bot_id":"7487149368"} | Delay: 2729
+[03.04.2026 01:31:32] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/if_market_news/80205","user_bot_id":"7487149368"} | Delay: 2132
+[03.04.2026 01:31:34] [INFO   ] 📋 [Req 2] ✅ SUCCESS | Time: 10.547s | File: PHOTO_579443cb-1fcf-4832-bb71-c65b30de1612.png
+[03.04.2026 01:31:34] [INFO   ] 📋 [Req 3] ✅ SUCCESS | Time: 10.555s | File: PHOTO_12d32717-8668-4a12-8dd3-ed8a94f94acd.png
+[03.04.2026 01:31:34] [INFO   ] 📋 [Req 1] ✅ SUCCESS | Time: 10.597s | File: PHOTO_79a6d987-d19a-452a-98f0-e63c2274add8.png
+[03.04.2026 01:31:34] [INFO   ] 📋 [Req 4] ✅ SUCCESS | Time: 10.627s | File: PHOTO_dcdf9d44-3c3b-42f6-b9ca-de6bd0d2221c.png
+[03.04.2026 01:32:03] [INFO   ] 📋 [Req 26] ✅ SUCCESS | Time: 40.089s | File: PHOTO_45c9188f-5c81-4853-b23a-17f50868bd13.png
+[03.04.2026 01:32:04] [INFO   ] 📋 [Req 18] ✅ SUCCESS | Time: 40.689s | File: PHOTO_2164efab-6b68-4a44-b7e5-5008a143eede.png
+[03.04.2026 01:32:05] [INFO   ] 📋 [Req 22] ✅ SUCCESS | Time: 41.292s | File: PHOTO_bb037cca-b0be-48ea-8256-7664f9a93038.png
+[03.04.2026 01:32:05] [INFO   ] 📋 [Req 12] ✅ SUCCESS | Time: 41.321s | File: PHOTO_4eeb9fc7-0b05-40e4-973f-aa58939dd58c.png
+[03.04.2026 01:32:37] [INFO   ] 📋 [Req 33] ✅ SUCCESS | Time: 73.481s | File: PHOTO_81263fc8-2d9d-40d8-88e7-13e5831113a1.png
+[03.04.2026 01:32:37] [INFO   ] 📋 [Req 31] ✅ SUCCESS | Time: 73.885s | File: PHOTO_a56b5c6c-99f1-415f-afa2-81050fa50ea6.png
+[03.04.2026 01:32:38] [INFO   ] 📋 [Req 10] ✅ SUCCESS | Time: 74.462s | File: PHOTO_03aef37d-6b40-4cf6-a0ce-e209692463cb.png
+[03.04.2026 01:32:39] [INFO   ] 📋 [Req 13] ✅ SUCCESS | Time: 75.45s | File: PHOTO_642ccf19-71cc-459e-bcdc-c1f3a97287ae.png
+[03.04.2026 01:33:07] [INFO   ] 📋 [Req 14] ✅ SUCCESS | Time: 103.653s | File: PHOTO_afc78a24-c4f2-4d87-a03a-3ebb844b7736.png
+[03.04.2026 01:33:07] [INFO   ] 📋 [Req 23] ✅ SUCCESS | Time: 104.261s | File: PHOTO_a21ba639-ab80-4db9-8d78-f9e49d9c2080.png
+[03.04.2026 01:33:08] [INFO   ] 📋 [Req 32] ✅ SUCCESS | Time: 104.985s | File: PHOTO_7551ce1a-7a9e-4e88-b936-6bcf9122f0c0.png
+[03.04.2026 01:33:09] [INFO   ] 📋 [Req 19] ✅ SUCCESS | Time: 105.539s | File: PHOTO_15982bf4-39ad-4e4a-a5f3-dcb1f2f0aab7.png
+[03.04.2026 01:33:38] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/devsp/5540","user_bot_id":"7487149368"} | Delay: 2926
+[03.04.2026 01:33:40] [INFO   ] 📋 [Req 25] ✅ SUCCESS | Time: 136.541s | File: PHOTO_a3bc7d2d-e8ba-4985-9f71-beedb7810955.png
+[03.04.2026 01:33:40] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/abuwtf/35610","user_bot_id":"7487149368"} | Delay: 1620
+[03.04.2026 01:34:01] [INFO   ] 📋 [Retry] Попытка 3 для запроса | {"post_url":"https://t.me/if_market_news/80204","user_bot_id":"7487149368"} | Delay: 2492
+[03.04.2026 01:34:10] [INFO   ] 📋 [Req 34] ✅ SUCCESS | Time: 166.383s | File: PHOTO_60bbf384-8f33-4dc4-b09b-6a009529be13.png
+[03.04.2026 01:34:10] [INFO   ] 📋 [Req 16] ✅ SUCCESS | Time: 166.776s | File: PHOTO_a2a6465e-9697-4f4f-9cdd-ddcb740486f3.png
+[03.04.2026 01:34:29] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/devsp/5540","user_bot_id":"7487149368"} | Delay: 1043
+[03.04.2026 01:34:29] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/devsp/5541","user_bot_id":"7487149368"} | Delay: 2036
+[03.04.2026 01:34:30] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 1902
+[03.04.2026 01:34:30] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/uzbekfintech/3470","user_bot_id":"7487149368"} | Delay: 2377
+[03.04.2026 01:34:30] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 2839
+[03.04.2026 01:34:30] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/ru2ch/167316","user_bot_id":"7487149368"} | Delay: 1375
+[03.04.2026 01:34:31] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/abuwtf/35611","user_bot_id":"7487149368"} | Delay: 1374
+[03.04.2026 01:34:32] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/devsp/5544","user_bot_id":"7487149368"} | Delay: 2299
+[03.04.2026 01:34:32] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/devsp/5543","user_bot_id":"7487149368"} | Delay: 2288
+[03.04.2026 01:34:32] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 1367
+[03.04.2026 01:34:34] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/if_market_news/80203","user_bot_id":"7487149368"} | Delay: 2346
+[03.04.2026 01:34:34] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/ru2ch/167318","user_bot_id":"7487149368"} | Delay: 1188
+[03.04.2026 01:34:35] [INFO   ] 📋 [Retry] Попытка 7 для запроса | {"post_url":"https://t.me/if_market_news/80205","user_bot_id":"7487149368"} | Delay: 1767
+[03.04.2026 01:36:11] [INFO   ] 📋 [Req 30] ✅ SUCCESS | Time: 287.713s | File: PHOTO_017ccd2a-1267-4a71-af4b-b09b8f1099b3.png
+[03.04.2026 01:36:12] [INFO   ] 📋 [Retry] Попытка 4 для запроса | {"post_url":"https://t.me/abuwtf/35610","user_bot_id":"7487149368"} | Delay: 2347
+[03.04.2026 01:36:14] [INFO   ] 📋 [Req 5] ✅ SUCCESS | Time: 290.429s | File: PHOTO_b8a50666-c9d8-4263-91bf-ccca8fc8dd87.png
+[03.04.2026 01:36:14] [INFO   ] 📋 [Req 28] ✅ SUCCESS | Time: 290.849s | File: PHOTO_1f19f96b-4384-4e92-b69b-5be4ccc7a347.png
+[03.04.2026 01:36:42] [INFO   ] 📋 [Req 6] ✅ SUCCESS | Time: 318.82s | File: PHOTO_1f236fcb-d803-4e3e-aa3c-8730b527311f.png
+[03.04.2026 01:36:42] [INFO   ] 📋 [Req 35] ✅ SUCCESS | Time: 318.862s | File: PHOTO_191cbb4f-d782-42af-adbc-91adc01ba70c.png
+[03.04.2026 01:36:42] [INFO   ] 📋 [Req 15] ✅ SUCCESS | Time: 318.928s | File: PHOTO_bc358e55-0601-4126-bee9-f729a707ef5f.png
+[03.04.2026 01:36:46] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 1691
+[03.04.2026 01:37:12] [INFO   ] 📋 [Req 9] ✅ SUCCESS | Time: 348.874s | File: PHOTO_0df85526-8610-4061-807e-0feecd885479.png
+[03.04.2026 01:37:13] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/abuwtf/35611","user_bot_id":"7487149368"} | Delay: 2688
+[03.04.2026 01:37:13] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 2008
+[03.04.2026 01:37:13] [INFO   ] 📋 [Retry] Попытка 7 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 1878
+[03.04.2026 01:37:20] [INFO   ] 📋 [Req 8] ✅ SUCCESS | Time: 357.279s | File: PHOTO_5b999f5f-d28e-4348-a891-3a0171f1b331.png
+[03.04.2026 01:37:22] [INFO   ] 📋 [Req 29] ✅ SUCCESS | Time: 359.197s | File: PHOTO_764b9e1e-2dfc-463d-9479-6ff4f14eed07.png
+[03.04.2026 01:37:24] [INFO   ] 📋 [Req 27] ✅ SUCCESS | Time: 360.641s | File: PHOTO_ecfd7321-a403-45c8-b87a-7e3c380408e9.png
+[03.04.2026 01:37:35] [INFO   ] 📋 [Retry] Попытка 7 для запроса | {"post_url":"https://t.me/ru2ch/167318","user_bot_id":"7487149368"} | Delay: 2115
+[03.04.2026 01:37:51] [INFO   ] 📋 [Retry] Попытка 5 для запроса | {"post_url":"https://t.me/abuwtf/35610","user_bot_id":"7487149368"} | Delay: 2497
+[03.04.2026 01:37:54] [INFO   ] 📋 [Retry] Попытка 6 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 1862
+[03.04.2026 01:37:56] [INFO   ] 📋 [Retry] Попытка 7 для запроса | {"post_url":"https://t.me/devsp/5542","user_bot_id":"7487149368"} | Delay: 1446
+[03.04.2026 01:38:18] [INFO   ] 📋 [Retry] Попытка 8 для запроса | {"post_url":"https://t.me/uzbekfintech/3471","user_bot_id":"7487149368"} | Delay: 2736
+[03.04.2026 01:38:23] [INFO   ] 📋 [Req 17] ✅ SUCCESS | Time: 419.542s | File: PHOTO_237aa455-b0fc-48ad-8554-ada5594e7761.png
+[03.04.2026 01:38:23] [INFO   ] 📋 [Retry] Попытка 7 для запроса | {"post_url":"https://t.me/abuwtf/35611","user_bot_id":"7487149368"} | Delay: 1588
+[03.04.2026 01:38:28] [INFO   ] 📋 [Req 20] ✅ SUCCESS | Time: 424.43s | File: PHOTO_d7aff2b6-7d48-48b6-99e3-4cc0ccade5ce.png
+[03.04.2026 01:38:50] [INFO   ] 📋 [Retry] Попытка 7 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 1939
+[03.04.2026 01:38:59] [INFO   ] 📋 [Req 11] ✅ SUCCESS | Time: 455.598s | File: PHOTO_2db49b8c-b6a0-4f58-a8c4-e034a238770d.png
+[03.04.2026 01:39:00] [INFO   ] 📋 [Req 7] ✅ SUCCESS | Time: 456.397s | File: PHOTO_e9e3a7a9-fc59-47cd-a9df-31193e46d604.png
+[03.04.2026 01:39:02] [INFO   ] 📋 [Req 21] ✅ SUCCESS | Time: 459.066s | File: PHOTO_fec8fd8f-0be9-4c86-adc2-65f1d1f8e0b7.png
+[03.04.2026 01:39:28] [INFO   ] 📋 [Retry] Попытка 8 для запроса | {"post_url":"https://t.me/abuwtf/35614","user_bot_id":"7487149368"} | Delay: 1847
+[03.04.2026 01:39:42] [INFO   ] 📋 [Req 24] ✅ SUCCESS | Time: 498.66s | File: PHOTO_1107d2d8-5552-46da-bcad-21c803a13281.png
+[03.04.2026 01:39:42] [INFO   ] 📋
+🏁 Test Finished in 498.658s | 8min 18sec
+PS D:\Projects\services\auto-screenshots> 

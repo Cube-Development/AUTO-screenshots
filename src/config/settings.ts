@@ -10,6 +10,7 @@ export class SETTINGS {
   static get SEND_TO_TELEGRAM()   { return env.SEND_TO_TELEGRAM === "true"; }
   static get TG_BOT_TOKEN()       { return env.TG_BOT_TOKEN; }
   static get TG_CHAT_ID()         { return env.TG_CHAT_ID; }
+  static get TG_TOPIC_ID()        { return env.TG_TOPIC_ID; }
 
 
   // Лимиты и порт

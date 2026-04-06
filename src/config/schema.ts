@@ -13,6 +13,7 @@ const envSchema = z.object({
   SEND_TO_TELEGRAM:     z.string().default("false"),
   TG_BOT_TOKEN:         z.string().default(""),
   TG_CHAT_ID:           z.string().default(""),
+  TG_TOPIC_ID:          z.string().default("").optional(),
   // Лимиты и порт
   TEST_SCREENSHOTS:     z.string().default("false"),
   MAX_SCREENSHOT_LIMIT: z.coerce.number().int().positive().default(5),

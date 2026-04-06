@@ -4,28 +4,28 @@ import axiosRetry from 'axios-retry';
 import { SETTINGS } from '../../config';
 import { log } from '../../utils';
 
-// const API_URL = 'http://13.63.234.3:3000/screenshot/post';
+// const API_URL = 'http://128.140.45.216:3000/screenshot/post';
 const API_URL = 'http://localhost:80/screenshot/post';
 const TEST_URLS = [
-    'https://www.instagram.com/p/DU4QYqpgnpX/',
-    "https://www.instagram.com/reels/DUL3wNVCDte/",
-    "https://www.instagram.com/reel/DQHfm-FiNrG/?igsh=c2ZpNG4wYXU0a3dx",
-    "https://www.instagram.com/p/DUVj4Y3jcFL/",
-    "https://www.youtube.com/watch?v=ifr2-iQ0owY&t=200s",
+    // 'https://www.instagram.com/p/DU4QYqpgnpX/',
+    // "https://www.instagram.com/reels/DUL3wNVCDte/",
+    // "https://www.instagram.com/reel/DQHfm-FiNrG/?igsh=c2ZpNG4wYXU0a3dx",
+    // "https://www.instagram.com/p/DUVj4Y3jcFL/",
+    // "https://www.youtube.com/watch?v=ifr2-iQ0owY&t=200s",
     // "https://www.youtube.com/watch?v=ifr2-iQ0owY&t=1200s",
     "https://www.youtube.com/watch?v=zTPTBM4boXc&t=200s",
     "https://www.youtube.com/watch?v=zTPTBM4boXc&t=1200s",
     // "https://www.youtube.com/watch?v=89l5VdZps5E&t=3600s",
     // "https://www.youtube.com/watch?v=89l5VdZps5E&t=7200s",
-    "https://www.youtube.com/watch?v=N2m4RFhCqKg&t=200s",
-    "https://www.youtube.com/watch?v=N2m4RFhCqKg&t=1200s",
-    "https://www.youtube.com/watch?v=SpknDrVyOgg&t=200s",
-    "https://www.youtube.com/watch?v=SpknDrVyOgg&t=1200s",
+    // "https://www.youtube.com/watch?v=N2m4RFhCqKg&t=200s",
+    // "https://www.youtube.com/watch?v=N2m4RFhCqKg&t=1200s",
+    // "https://www.youtube.com/watch?v=SpknDrVyOgg&t=200s",
+    // "https://www.youtube.com/watch?v=SpknDrVyOgg&t=1200s",
     // "https://www.youtube.com/watch?v=SpknDrVyOgg&t=2400s",
     // "https://www.youtube.com/watch?v=SpknDrVyOgg&t=3600s",
     // "https://t.me/uzbekfintech/3254",
-    "https://t.me/if_market_news/80201",
-    "https://t.me/if_market_news/80202",
+    // "https://t.me/if_market_news/80201",
+    // "https://t.me/if_market_news/80202",
     // "https://t.me/if_market_news/80203",
     // "https://t.me/if_market_news/80204",
     // "https://t.me/if_market_news/80205",
@@ -66,7 +66,7 @@ const TEST_URLS = [
     // "https://t.me/if_market_news/80220",
 ]
 
-const NUM_CONCURRENT_REQUESTS = 10;
+const NUM_CONCURRENT_REQUESTS = 1;
 
 // Настройка ретраев для обхода Rate Limiter (5 RPS)
 axiosRetry(axios, { 
