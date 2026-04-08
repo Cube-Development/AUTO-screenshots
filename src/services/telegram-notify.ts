@@ -21,7 +21,7 @@ export async function notifyTelegram(
 
   if (!token || !chatId) return;
 
-  const caption = `<u>Скриншот</u>\nЗаказ: ${orderId}\nКанал: ${channelUrl}\nСсылка на пост: ${sourceUrl}\nИмя файла: <code>${fileName}</code>`;
+  const caption = `<u>Скриншот</u>\nЗаказ: <code>${orderId}</code>\nКанал: ${channelUrl}\nСсылка на пост: ${sourceUrl}\nИмя файла: <code>${fileName}</code>`;
 
   const baseUrl = `https://api.telegram.org/bot${token}`;
 
