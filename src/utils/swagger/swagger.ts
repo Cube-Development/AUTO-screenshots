@@ -20,9 +20,9 @@ const generator = new OpenApiGeneratorV3(registry.definitions);
 const baseDocument = generator.generateDocument({
   openapi: '3.0.0',
   info: {
-    title: 'e-imzo-sign-server API',
-    version: '1.0.0',
-    description: 'Документация API для сервиса подписи документов'
+    title: 'auto-screenshots-server API',
+    version: '2.0.0',
+    description: 'Документация API для сервиса скриншотов'
   }
 });
 
