@@ -11,6 +11,8 @@ import { log } from "../utils";
 export async function notifyTelegram(
   screenshot: Buffer,
   sourceUrl: string,
+  orderId: string,
+  channelUrl: string,
   fileName: string
 ): Promise<void> {
   const token = SETTINGS.TG_BOT_TOKEN;
@@ -19,7 +21,7 @@ export async function notifyTelegram(
 
   if (!token || !chatId) return;
 
-  const caption = `<u>Скриншот</u>\nСсылка на пост: ${sourceUrl}\nИмя файла: <code>${fileName}</code>`;
+  const caption = `<u>Скриншот</u>\nЗаказ: ${orderId}\nКанал: ${channelUrl}\nСсылка на пост: ${sourceUrl}\nИмя файла: <code>${fileName}</code>`;
 
   const baseUrl = `https://api.telegram.org/bot${token}`;
 

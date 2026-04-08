@@ -22,6 +22,14 @@ export const PostScreenShotSchema = z.object({
   user_bot_id: z.string().optional().openapi({
     description: "ID бота Telegram для авторизации",
     example: "7697061334",
+  }),
+  order_id: z.string().optional().openapi({
+    description: "ID заказа",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  }),
+  channel_url: z.string().optional().openapi({
+    description: "URL канала",
+    example: "https://t.me/channel_name",
   })
     })
   .openapi(ENUM_REGISTER_ROUTE.POST_SCREENSHOT)

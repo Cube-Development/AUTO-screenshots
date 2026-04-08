@@ -22,7 +22,7 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
         });
     }
 
-    const { post_url, user_bot_id } = parsed.data;
+    const { post_url, user_bot_id, order_id = "", channel_url = "" } = parsed.data;
     
     // Внутренний ID запроса для отслеживания очереди
     const reqId = crypto.randomUUID();
@@ -86,7 +86,7 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
 
         // Уведомление в ТГ теперь только здесь, ПОСЛЕ всех проверок на отмену
         if (SETTINGS.SEND_TO_TELEGRAM && result.buffer) {
-            notifyTelegram(result.buffer, post_url, result.file_name);
+            notifyTelegram(result.buffer, post_url, order_id, channel_url, result.file_name);
             log.info(logCtx, `Уведомление успешно отправлено в Telegram`);
         }
 
