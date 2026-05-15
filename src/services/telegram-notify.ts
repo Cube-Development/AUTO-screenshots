@@ -42,15 +42,6 @@ export async function notifyTelegram(
   }
 
   try {
-    // Отправка в телеграм
-    await sendTelegramFile(baseUrl, "sendPhoto", "photo", chatId, screenshot!, fileName, caption, topicId);
-    log.info(`📩 Скриншот отправлен в TG бот (photo) | ${sourceUrl}`);
-  } catch (error: any) {
-    const errorMsg = error.response?.data?.description || error.message;
-    log.warn(`⚠️ Не удалось отправить в TG бот: ${errorMsg}`);
-  }
-
-  try {
     // Попытка 1: sendPhoto
     await sendTelegramFile(baseUrl, "sendPhoto", "photo", chatId, screenshot!, fileName, caption, topicId);
     log.info(`📩 Скриншот отправлен в TG бот (photo) | ${sourceUrl}`);
