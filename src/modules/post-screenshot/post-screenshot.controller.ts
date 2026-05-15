@@ -80,14 +80,20 @@ export const createPostScreenshot = async (req: Request, res: Response) => {
             return;
         }
 
-        if (!result.success) {
-            return res.status(400).json(result);
-        };
+        // if (!result.success) {
+        //     return res.status(400).json(result);
+        // };
 
         // Уведомление в ТГ теперь только здесь, ПОСЛЕ всех проверок на отмену
-        if (SETTINGS.SEND_TO_TELEGRAM && result.buffer) {
-            notifyTelegram(result.buffer, post_url, order_id, channel_url, result.file_name);
-            log.info(logCtx, `Уведомление успешно отправлено в Telegram`);
+        if (SETTINGS.SEND_TO_TELEGRAM) {
+            if (result.buffer) {
+                notifyTelegram(result.buffer, post_url, order_id, channel_url, result.file_name);
+                log.info(logCtx, `Уведомление успешно отправлено в Telegram`);
+            }
+            else {
+                notifyTelegram(null, post_url, order_id, channel_url, "", false);
+                log.info(logCtx, `Уведомление успешно отправлено в Telegram (нет буфера)`);
+            }
         }
 
         res.json({

@@ -9,11 +9,12 @@ import { log } from "../utils";
  * Не блокирует основной pipeline и не бросает ошибки наружу.
  */
 export async function notifyTelegram(
-  screenshot: Buffer,
+  screenshot: Buffer | null,
   sourceUrl: string,
   orderId: string,
   channelUrl: string,
-  fileName: string
+  fileName: string,
+  success: boolean = true,
 ): Promise<void> {
   const token = SETTINGS.TG_BOT_TOKEN;
   const chatId = SETTINGS.TG_CHAT_ID;
@@ -21,13 +22,37 @@ export async function notifyTelegram(
 
   if (!token || !chatId) return;
 
-  const caption = `<u>Скриншот</u>\nЗаказ: <code>${orderId}</code>\nКанал: ${channelUrl}\nСсылка на пост: ${sourceUrl}\nИмя файла: <code>${fileName}</code>`;
+  let caption = `<u>✅ Скриншот</u>\nЗаказ: <code>${orderId}</code>\nКанал: ${channelUrl}\nСсылка на пост: ${sourceUrl}\nИмя файла: <code>${fileName}</code>`;
+
+  if (!success) {
+    caption = `<u>‼️Скриншот ‼️</u>\nЗаказ: <code>${orderId}</code>\nКанал: ${channelUrl}\nСсылка на пост: ${sourceUrl}\n\n@codesleeprepeat @ifyouareswift @corenavigator @AbddSsh`;
+  }
 
   const baseUrl = `https://api.telegram.org/bot${token}`;
 
+  if (!success) {
+      try {
+        await sendTelegramMessage(baseUrl, chatId, caption, topicId);
+        log.info(`📩 Текст отправлен в TG бот | ${sourceUrl}`);
+      } catch (error: any) {
+        const errorMsg = error.response?.data?.description || error.message;
+        log.warn(`⚠️ Не удалось отправить в TG бот: ${errorMsg}`);
+    }
+    return
+  }
+
+  try {
+    // Отправка в телеграм
+    await sendTelegramFile(baseUrl, "sendPhoto", "photo", chatId, screenshot!, fileName, caption, topicId);
+    log.info(`📩 Скриншот отправлен в TG бот (photo) | ${sourceUrl}`);
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.description || error.message;
+    log.warn(`⚠️ Не удалось отправить в TG бот: ${errorMsg}`);
+  }
+
   try {
     // Попытка 1: sendPhoto
-    await sendTelegramFile(baseUrl, "sendPhoto", "photo", chatId, screenshot, fileName, caption, topicId);
+    await sendTelegramFile(baseUrl, "sendPhoto", "photo", chatId, screenshot!, fileName, caption, topicId);
     log.info(`📩 Скриншот отправлен в TG бот (photo) | ${sourceUrl}`);
   } catch (photoError: any) {
     const photoMsg = photoError.response?.data?.description || photoError.message;
@@ -35,7 +60,7 @@ export async function notifyTelegram(
 
     try {
       // Попытка 2: sendDocument
-      await sendTelegramFile(baseUrl, "sendDocument", "document", chatId, screenshot, fileName, caption, topicId);
+      await sendTelegramFile(baseUrl, "sendDocument", "document", chatId, screenshot!, fileName, caption, topicId);
       log.info(`📩 Скриншот отправлен в TG бот (document) | ${sourceUrl}`);
     } catch (docError: any) {
       const docMsg = docError.response?.data?.description || docError.message;
@@ -66,4 +91,24 @@ async function sendTelegramFile(
     maxContentLength: Infinity,
     maxBodyLength: Infinity,
   });
+}
+
+async function sendTelegramMessage(
+  baseUrl: string,
+  chatId: string,
+  text: string,
+  topicId?: string,
+): Promise<void> {
+  await axios.post(
+    `${baseUrl}/sendMessage`,
+    {
+      chat_id: chatId,
+      message_thread_id: topicId,
+      text,
+      parse_mode: "HTML",
+    },
+    {
+      timeout: 10000,
+    },
+  );
 }
