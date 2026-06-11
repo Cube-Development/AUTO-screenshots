@@ -9,7 +9,9 @@
     "auth:telegram": "npx tsx src/modules/auth/telegram.auth.ts",
     "auth:youtube": "npx tsx src/modules/auth/youtube.auth.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "test:screenshots": "npx ts-node src/tests/screenshots/screenshot-stress-test.ts"
+    "test:screenshots": "npx ts-node src/tests/screenshots/screenshot-stress-test.ts",
+    "test:tg-debug": "npx ts-node src/tests/screenshots/tg-debug-worker.ts",
+    "test:tg-k-debug": "npx ts-node src/tests/screenshots/tg-k-debug-worker.ts"
   },
   "keywords": [],
   "author": "",

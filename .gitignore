@@ -27,3 +27,8 @@ dist-ssr
 *.env
 # Sentry Config File
 .env.sentry-build-plugin
+
+/src/tests/screenshots/screens
+/src/tests/screenshots/debug
+/src/tests/screenshots/debug-k
+/src/tests/screenshots/html

@@ -53,9 +53,14 @@ export class PagePool {
 
         if (this.active < this.maxSize) {
             this.active++;
-            const page = await this.createPage();
-            log.info(`🗂️ [${this.label}] Вкладка открыта (${this.active}/${this.maxSize})`);
-            return page;
+            try {
+                const page = await this.createPage();
+                log.info(`🗂️ [${this.label}] Вкладка открыта (${this.active}/${this.maxSize})`);
+                return page;
+            } catch (err) {
+                this.active--;
+                throw err;
+            }
         }
 
         log.info(`🗂️ [${this.label}] Все ${this.maxSize} слотов заняты, запрос в очереди (ожидают: ${this.waiting.length + 1})`);
@@ -124,7 +129,7 @@ export class PagePool {
                 liveWaiter.reject(err);
             });
         } else {
-            this.active--;
+            if (this.active > 0) this.active--;
             log.info(`🗂️ [${this.label}] Слот освобождён (${this.active}/${this.maxSize})`);
         }
     }

@@ -13,8 +13,8 @@ const TEST_URLS = [
     // "https://www.instagram.com/p/DUVj4Y3jcFL/",
     // "https://www.youtube.com/watch?v=ifr2-iQ0owY&t=200s",
     // "https://www.youtube.com/watch?v=ifr2-iQ0owY&t=1200s",
-    "https://www.youtube.com/watch?v=zTPTBM4boXc&t=200s",
-    "https://www.youtube.com/watch?v=zTPTBM4boXc&t=1200s",
+    // "https://www.youtube.com/watch?v=zTPTBM4boXc&t=200s",
+    // "https://www.youtube.com/watch?v=zTPTBM4boXc&t=1200s",
     // "https://www.youtube.com/watch?v=89l5VdZps5E&t=3600s",
     // "https://www.youtube.com/watch?v=89l5VdZps5E&t=7200s",
     // "https://www.youtube.com/watch?v=N2m4RFhCqKg&t=200s",
@@ -39,6 +39,7 @@ const TEST_URLS = [
     // "https://t.me/if_market_news/80213",
     // "https://t.me/if_market_news/80214",
     // "https://t.me/if_market_news/80215",
+    // "https://t.me/ru2ch/171824",
     // "https://t.me/if_market_news/80216",
     // "https://t.me/if_market_news/80217",
     // "https://t.me/if_market_news/80218",
@@ -46,9 +47,14 @@ const TEST_URLS = [
     // "https://t.me/devsp/5540",
     // "https://t.me/devsp/5541",
     // "https://t.me/devsp/5542",
-    "https://t.me/devsp/5543",
-    "https://t.me/devsp/5544",
-    "https://t.me/uzbekfintech/3470",
+    "https://t.me/c/1691580147/17630",
+    "https://t.me/c/1691580147/17432",
+    "https://t.me/c/1691580147/17433",
+    "https://t.me/c/1691580147/17434",
+    "https://t.me/c/1691580147/17435",
+    // "https://t.me/devsp/5543",
+    // "https://t.me/devsp/5544",
+    // "https://t.me/uzbekfintech/3470",
     // "https://t.me/uzbekfintech/3471",
     // "https://t.me/uzbekfintech/3472",
     // "https://t.me/uzbekfintech/3473",
@@ -61,12 +67,12 @@ const TEST_URLS = [
     // "https://t.me/abuwtf/35610",
     // "https://t.me/abuwtf/35611",
     // "https://t.me/abuwtf/35612",
-    "https://t.me/abuwtf/35613",
+    // "https://t.me/abuwtf/35613",
     // "https://t.me/abuwtf/35614",
     // "https://t.me/if_market_news/80220",
 ]
 
-const NUM_CONCURRENT_REQUESTS = 1;
+const NUM_CONCURRENT_REQUESTS = 5;
 
 // Настройка ретраев для обхода Rate Limiter (5 RPS)
 axiosRetry(axios, { 
@@ -77,10 +83,10 @@ axiosRetry(axios, {
         return delay; // фиксированная задержка 1с (соответствует windowMs лимитера)
     },
     retryCondition: (error) => {
-        // Ретрай при любых ошибках сервера (400, 429, 500+) ИЛИ при сетевых ошибках без ответа
-        // (400 возвращается контроллером post-screenshot.controller.ts при внутренних ошибках сервиса)
         const status = error.response?.status;
-        return (status !== undefined && (status >= 400 && status !== 422)) || !error.response;
+        if (!error.response) return true;
+        if (status === 429) return true;
+        return status !== undefined && status >= 500;
     },
     shouldResetTimeout: true // Сбрасываем таймаут axios при каждой попытке
 });
@@ -102,6 +108,9 @@ async function sendScreenshotRequest(id: number) {
             timeout: 180000 // Увеличиваем до 180с, так как ретраи занимают время
         });
         const duration = Date.now() - start;
+        if (!response.data?.success || !response.data?.file_name) {
+            throw new Error(`Invalid response: ${JSON.stringify(response.data)}`);
+        }
         log.info(`[Req ${id}] ✅ SUCCESS | Time: ${duration / 1000}s | File: ${response.data.file_name}`);
     } catch (error: any) {
         const duration = Date.now() - start;
