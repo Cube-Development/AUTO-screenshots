@@ -3,10 +3,22 @@ import { Page } from "playwright";
 export const TG_TARGET_MESSAGE_TIMEOUT_MS = 45_000;
 const TG_SETTLE_MS = 2_000;
 const TG_VIEWPORT_WAIT_MS = 15_000;
+const TG_K_MID_OFFSET = 2 ** 32;
 
 export function extractPostId(link: string): string | null {
   const m = link.match(/t\.me\/(?:c\/\d+|[^/]+)\/(\d+)/);
   return m?.[1] ?? null;
+}
+
+/** Telegram K: data-mid = postId + 2^32 */
+export function postIdToKMid(postId: string): string {
+  return String(Number(postId) + TG_K_MID_OFFSET);
+}
+
+export function kMidToPostId(mid: string): string | null {
+  const n = Number(mid);
+  if (!Number.isFinite(n) || n < TG_K_MID_OFFSET) return null;
+  return String(n - TG_K_MID_OFFSET);
 }
 
 type ViewportBubble = { mid: string; ready: boolean };
@@ -187,8 +199,37 @@ async function scrollKChat(page: Page, direction: "up" | "down"): Promise<boolea
   }, direction);
 }
 
-export async function waitForKTargetMessage(page: Page, signal?: AbortSignal): Promise<string | null> {
+export async function waitForKTargetMessage(page: Page, postId: string | null, signal?: AbortSignal): Promise<string | null> {
   assertPageOpen(page, signal);
+
+  if (postId) {
+    const mid = postIdToKMid(postId);
+
+    await page.waitForFunction(
+      (targetMid) => {
+        const el = document.querySelector(
+          `#column-center .bubble[data-mid="${targetMid}"]`,
+        ) as HTMLElement | null;
+        if (!el || el.classList.contains("service") || el.classList.contains("is-date")) return false;
+
+        const text = el.innerText || "";
+        const hasText = text.length > 2 && !text.includes("Loading") && !text.includes("Загрузка");
+        const hasMedia = !!el.querySelector(
+          ".media-photo, .media-container, .attachment, video, .album-item, .preloader-container",
+        );
+        const ready = (hasText || hasMedia) && el.offsetHeight > 20;
+        if (ready) el.scrollIntoView({ block: "center", behavior: "instant" });
+        return ready;
+      },
+      mid,
+      { timeout: TG_TARGET_MESSAGE_TIMEOUT_MS },
+    );
+
+    assertPageOpen(page, signal);
+    await centerBubbleByMid(page, mid);
+    await page.waitForTimeout(TG_SETTLE_MS);
+    return mid;
+  }
 
   const deadline = Date.now() + TG_VIEWPORT_WAIT_MS;
   while (Date.now() < deadline) {

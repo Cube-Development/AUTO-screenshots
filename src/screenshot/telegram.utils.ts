@@ -322,7 +322,7 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
     log.info(logCtx, "Ожидание превью/контента сообщения...");
     try {
       if (postId) {
-        const resolvedMid = await waitForKTargetMessage(page, signal);
+        const resolvedMid = await waitForKTargetMessage(page, postId, signal);
         if (!resolvedMid) throw new Error("Пост не найден в viewport");
         log.info({ ...logCtx, postId, resolvedMid }, "Контент K готов");
       } else {
@@ -344,7 +344,28 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
     if (SETTINGS.TEST_SCREENSHOTS) {
       const timestamp = getCISDateString();
       const safeUrl = link.replace(/https?:\/\//, "").replace(/[\/:?=&]/g, "_").substring(0, 50);
-      screenshotOptions.path = path.join(TEST_SCREENS_DIR, `tg_${timestamp}_${safeUrl}.png`);
+      const fileName = `tg_${timestamp}_${safeUrl}`;
+      screenshotOptions.path = path.join(TEST_SCREENS_DIR, `${fileName}.png`);
+
+      try {
+        const htmlDir = path.join(path.dirname(TEST_SCREENS_DIR), "html");
+        if (!fs.existsSync(htmlDir)) fs.mkdirSync(htmlDir, { recursive: true });
+
+        let bodyHtml = await page.$eval("body", (el) => el.outerHTML);
+        bodyHtml = bodyHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+
+        const beautify = require("js-beautify").html;
+        const formatted = beautify(bodyHtml, {
+          indent_size: 2,
+          preserve_newlines: false,
+          content_unformatted: ["script", "style"],
+        });
+
+        fs.writeFileSync(path.join(htmlDir, `${fileName}.html`), formatted);
+        log.info({ ...logCtx, fileName: `${fileName}.html` }, "HTML дамп сохранён");
+      } catch (err) {
+        log.error({ ...logCtx, err }, "Ошибка при сохранении HTML");
+      }
     }
 
     await dismissTelegramModals(page, logCtx);
