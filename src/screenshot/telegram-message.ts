@@ -178,7 +178,12 @@ async function findViewportBubble(page: Page): Promise<ViewportBubble | null> {
 
 async function centerBubbleByMid(page: Page, mid: string): Promise<void> {
   await page.evaluate((id) => {
-    const el = document.querySelector(`.bubble[data-mid="${id}"]`) as HTMLElement | null;
+    const albumItem = document.querySelector(`#column-center .album-item[data-mid="${id}"]`) as HTMLElement | null;
+    const el = (
+      document.querySelector(`#column-center .bubble[data-mid="${id}"]`) ??
+      document.querySelector(`#column-center .bubble[data-text-mid="${id}"]`) ??
+      albumItem?.closest(".bubble")
+    ) as HTMLElement | null;
     el?.scrollIntoView({ block: "center", behavior: "instant" });
   }, mid);
 }
@@ -207,8 +212,11 @@ export async function waitForKTargetMessage(page: Page, postId: string | null, s
 
     await page.waitForFunction(
       (targetMid) => {
-        const el = document.querySelector(
-          `#column-center .bubble[data-mid="${targetMid}"]`,
+        const albumItem = document.querySelector(`#column-center .album-item[data-mid="${targetMid}"]`) as HTMLElement | null;
+        const el = (
+          document.querySelector(`#column-center .bubble[data-mid="${targetMid}"]`) ??
+          document.querySelector(`#column-center .bubble[data-text-mid="${targetMid}"]`) ??
+          albumItem?.closest(".bubble")
         ) as HTMLElement | null;
         if (!el || el.classList.contains("service") || el.classList.contains("is-date")) return false;
 
