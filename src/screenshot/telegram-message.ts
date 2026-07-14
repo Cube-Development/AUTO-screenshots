@@ -6,7 +6,7 @@ const TG_VIEWPORT_WAIT_MS = 15_000;
 const TG_K_MID_OFFSET = 2 ** 32;
 
 export function extractPostId(link: string): string | null {
-  const m = link.match(/t\.me\/(?:c\/\d+|[^/]+)\/(\d+)/);
+  const m = link.match(/(?:t\.me|telegram\.me)\/(?:c\/\d+|[^/]+)\/(\d+)/);
   return m?.[1] ?? null;
 }
 

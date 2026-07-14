@@ -23,11 +23,11 @@ const TG_WS_STABLE_MS = 1_000;
 const TG_APP_READY_TIMEOUT_MS = 15_000;
 
 function extractPrivateChannelId(link: string): string | null {
-  return link.match(/t\.me\/c\/(\d+)/)?.[1] ?? null;
+  return link.match(/(?:t\.me|telegram\.me)\/c\/(\d+)/)?.[1] ?? null;
 }
 
 function isPrivatePostLink(link: string): boolean {
-  return /t\.me\/c\/\d+\/\d+/.test(link);
+  return /(?:t\.me|telegram\.me)\/c\/\d+\/\d+/.test(link);
 }
 
 function toTelegramK(url: string): string {
@@ -45,14 +45,14 @@ export function buildWebHrefFromTgaddr(tgaddr: string) {
 }
 
 export function tryResolvePrivatePostLink(link: string): string | null {
-  const match = link.match(/t\.me\/c\/(\d+)\/(\d+)/);
+  const match = link.match(/(?:t\.me|telegram\.me)\/c\/(\d+)\/(\d+)/);
   if (!match) return null;
   const tgaddr = `tg://privatepost?channel=${match[1]}&post=${match[2]}`;
   return `https://web.telegram.org/k/#?tgaddr=${encodeURIComponent(tgaddr)}`;
 }
 
 export function tryResolveDirectTelegramKLink(link: string): string | null {
-  const match = link.match(/t\.me\/([a-zA-Z0-9_]+)\/(\d+)/);
+  const match = link.match(/(?:t\.me|telegram\.me)\/([a-zA-Z0-9_]+)\/(\d+)/);
   if (!match || match[1] === "c") return null;
   const tgaddr = `tg://resolve?domain=${match[1]}&post=${match[2]}`;
   return `https://web.telegram.org/k/#?tgaddr=${encodeURIComponent(tgaddr)}`;
