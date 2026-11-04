@@ -6,7 +6,7 @@ import { log } from "../utils";
 import { SETTINGS } from "../config";
 import { IErrorCallback, IPostCapture } from "../type";
 import { ResourceType } from "../type";
-import { TEST_SCREENS_DIR, getCISDateString } from "./utils";
+import { SCREENSHOT_EXTENSION, TEST_SCREENS_DIR, compressScreenshot, getCISDateString } from "./utils";
 
 export async function ensureInstagramAuth(auth_path: string) {
   if (fs.existsSync(auth_path)) return;
@@ -198,17 +198,18 @@ export async function captureInstagramPostScreenshot(page: Page, postUrl: string
       });
     }).catch(() => null);
 
-    const screenshotOptions: any = {
-      type: 'png',
+    const screenshotOptions = {
+      type: 'png' as const,
       clip: { x: 140, y: 0, width: 1000, height: 700 }
     };
+    let debugFilePath: string | null = null;
 
     if (SETTINGS.TEST_SCREENSHOTS) {
       const timestamp = getCISDateString();
       const safeUrl = normalizedUrl.replace(/https?:\/\//, '').replace(/[\/:?=&]/g, '_').substring(0, 50);
       const fileName = `ig_${timestamp}_${safeUrl}`;
       
-      screenshotOptions.path = path.join(TEST_SCREENS_DIR, `${fileName}.png`);
+      debugFilePath = path.join(TEST_SCREENS_DIR, `${fileName}.${SCREENSHOT_EXTENSION}`);
 
       // Сохраняем только BODY HTML (без мусора из HEAD)
       try {
@@ -234,8 +235,10 @@ export async function captureInstagramPostScreenshot(page: Page, postUrl: string
       }
     }
 
-    const buffer = await page.screenshot(screenshotOptions);
-    log.info(logCtx, `✅ Скриншот сделан`);
+    const png = await page.screenshot(screenshotOptions);
+    const buffer = await compressScreenshot(png);
+    if (debugFilePath) fs.writeFileSync(debugFilePath, buffer);
+    log.info(logCtx, `✅ Скриншот сделан (${png.length >> 10}KB png → ${buffer.length >> 10}KB jpg)`);
     return buffer;
   } finally {
     signal?.removeEventListener('abort', abortNavigation);

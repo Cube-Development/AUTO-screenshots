@@ -25,7 +25,7 @@ export const CreatePostScreenShotSwagger = {
             type: 'object',
             properties: {
               success: { type: 'boolean', example: true },
-               file_name: { type: 'string', example: 'File.png' },
+               file_name: { type: 'string', example: 'File.jpg' },
             
             }
           }

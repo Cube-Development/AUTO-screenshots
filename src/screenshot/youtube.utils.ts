@@ -4,7 +4,7 @@ import path from "path";
 import { chromium, Page } from "playwright";
 import { log } from "../utils";
 import { ResourceType } from "../type";
-import { TEST_SCREENS_DIR, getCISDateString } from "./utils";
+import { SCREENSHOT_EXTENSION, TEST_SCREENS_DIR, compressScreenshot, getCISDateString } from "./utils";
 
 const YT_SCREENS_DIR = path.join(TEST_SCREENS_DIR, "youtube");
 
@@ -189,10 +189,11 @@ export async function captureYoutubeTimelapse(
       break;
     }
 
-    const fileName = `yt_${videoId}_${String(i).padStart(2, "0")}.png`;
+    const fileName = `yt_${videoId}_${String(i).padStart(2, "0")}.${SCREENSHOT_EXTENSION}`;
     const filePath = path.join(sessionDir, fileName);
 
-    const buffer = await page.screenshot({ path: filePath });
+    const buffer = await compressScreenshot(await page.screenshot());
+    fs.writeFileSync(filePath, buffer);
     buffers.push(buffer);
 
     log.info(logCtx, `📸 [${i + 1}/${TOTAL_SCREENSHOTS}] Скриншот сохранён: ${fileName}`);
@@ -247,7 +248,8 @@ export async function captureYoutubeSingle(
 
   if (signal?.aborted) throw new Error("Aborted");
 
-  const buffer = await page.screenshot();
-  log.info(logCtx, `✅ Скриншот сделан`);
+  const png = await page.screenshot();
+  const buffer = await compressScreenshot(png);
+  log.info(logCtx, `✅ Скриншот сделан (${png.length >> 10}KB png → ${buffer.length >> 10}KB jpg)`);
   return buffer;
 }

@@ -2,6 +2,7 @@ import axios from "axios";
 import axiosRetry from "axios-retry";
 import https from "https";
 import { SETTINGS } from "../config";
+import { SCREENSHOT_EXTENSION } from "../screenshot/utils";
 import { log } from "../utils";
 
 const agent = new https.Agent({ rejectUnauthorized: false });
@@ -31,7 +32,7 @@ export const getUploadLink = async (signal?: AbortSignal): Promise<{file_name: s
   try {
     const CONTENT_TYPE = 2;
     const response = await blogixApi.get(`/file/v/upload_link`, { 
-      params: { extension: "png", content_type: CONTENT_TYPE },
+      params: { extension: SCREENSHOT_EXTENSION, content_type: CONTENT_TYPE },
       signal: signal
     });
     return response?.data;

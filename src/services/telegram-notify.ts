@@ -1,6 +1,7 @@
 import axios from "axios";
 import FormData from "form-data";
 import { SETTINGS } from "../config";
+import { SCREENSHOT_MIME } from "../screenshot/utils";
 import { log } from "../utils";
 
 /**
@@ -73,7 +74,7 @@ async function sendTelegramFile(
   const form = new FormData();
   form.append("chat_id", chatId);
   if (topicId) form.append("message_thread_id", topicId);
-  form.append(fieldName, buffer, { filename: fileName, contentType: "image/png" });
+  form.append(fieldName, buffer, { filename: fileName, contentType: SCREENSHOT_MIME });
   form.append("caption", caption);
   form.append("parse_mode", "HTML");
   await axios.post(`${baseUrl}/${method}`, form, {

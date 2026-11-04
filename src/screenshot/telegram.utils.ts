@@ -5,7 +5,7 @@ import { chromium, Page } from "playwright";
 import { log } from "../utils";
 import { SETTINGS } from "../config";
 import { ResourceType } from "../type";
-import { TEST_SCREENS_DIR, getCISDateString } from "./utils";
+import { SCREENSHOT_EXTENSION, TEST_SCREENS_DIR, compressScreenshot, getCISDateString } from "./utils";
 import { extractPostId, waitForKTargetMessage } from "./telegram-message";
 
 const TG_GOTO_TIMEOUT_MS = 60_000;
@@ -340,12 +340,13 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
       throw new Error("TIMEOUT_OR_ERROR: Ошибка ожидания контента");
     }
 
-    const screenshotOptions: { fullPage: boolean; path?: string } = { fullPage: false };
+    const screenshotOptions = { fullPage: false };
+    let debugFilePath: string | null = null;
     if (SETTINGS.TEST_SCREENSHOTS) {
       const timestamp = getCISDateString();
       const safeUrl = link.replace(/https?:\/\//, "").replace(/[\/:?=&]/g, "_").substring(0, 50);
       const fileName = `tg_${timestamp}_${safeUrl}`;
-      screenshotOptions.path = path.join(TEST_SCREENS_DIR, `${fileName}.png`);
+      debugFilePath = path.join(TEST_SCREENS_DIR, `${fileName}.${SCREENSHOT_EXTENSION}`);
 
       try {
         const htmlDir = path.join(path.dirname(TEST_SCREENS_DIR), "html");
@@ -369,8 +370,10 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
     }
 
     await dismissTelegramModals(page, logCtx);
-    const buffer = await page.screenshot(screenshotOptions);
-    log.info({ ...logCtx, stage: "screenshot", durationMs: Date.now() - flowStart }, "Скриншот сделан");
+    const png = await page.screenshot(screenshotOptions);
+    const buffer = await compressScreenshot(png);
+    if (debugFilePath) fs.writeFileSync(debugFilePath, buffer);
+    log.info({ ...logCtx, stage: "screenshot", durationMs: Date.now() - flowStart, pngKB: png.length >> 10, jpgKB: buffer.length >> 10 }, "Скриншот сделан");
 
     return buffer;
   } finally {

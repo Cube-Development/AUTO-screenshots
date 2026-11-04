@@ -1,8 +1,26 @@
 import axios from "axios";
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 import { SETTINGS } from "../config";
 import { log } from "../utils";
+
+/** Формат файла, который уходит в хранилище и в TG */
+export const SCREENSHOT_EXTENSION = "jpg";
+export const SCREENSHOT_MIME = "image/jpeg";
+
+/**
+ * Перекодирует PNG от Playwright в JPEG (~-60% веса).
+ * mozjpeg q92 + 4:4:4 (без субдискретизации цвета) — текст и цветные элементы
+ * остаются чёткими, визуально неотличимо от PNG. Нативный JPEG Playwright
+ * использует 4:2:0 и мылит цветной текст, поэтому кодируем через sharp.
+ */
+export async function compressScreenshot(png: Buffer): Promise<Buffer> {
+  return sharp(png)
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: 92, mozjpeg: true, chromaSubsampling: "4:4:4" })
+    .toBuffer();
+}
 
 export const TEST_SCREENS_DIR = path.join("src", "tests", "screenshots", "screens");
 
@@ -25,7 +43,7 @@ export function getCISDateString(): string {
 export async function uploadScreenshot(url: string, bytes: Buffer, signal?: AbortSignal) {
   try {
     await axios.put(url, bytes, {
-      headers: { "Content-Type": "image/png" },
+      headers: { "Content-Type": SCREENSHOT_MIME },
       signal: signal,
     });
   } catch (error: any) {
