@@ -1,0 +1,78 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Не запускать два деплоя одновременно; новый ждёт окончания текущего.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
+          SERVICE_NAME: ${{ vars.SERVICE_NAME || secrets.SERVICE_NAME }}
+          DEPLOY_REF: ${{ github.sha }}
+        run: |
+          if [ -z "$DEPLOY_PATH" ] || [ -z "$SERVICE_NAME" ]; then
+            echo "DEPLOY_PATH and SERVICE_NAME must be set as repository variables or secrets" >&2
+            exit 1
+          fi
+
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' SERVICE_NAME='$SERVICE_NAME' DEPLOY_REF='$DEPLOY_REF' bash -se" <<'EOF'
+          set -euo pipefail
+
+          # Неинтерактивная SSH-сессия не читает .bashrc, поэтому nvm подключаем явно.
+          if [ -s "$HOME/.nvm/nvm.sh" ]; then
+            set +u
+            . "$HOME/.nvm/nvm.sh"
+            set -u
+          fi
+
+          cd "$DEPLOY_PATH"
+
+          echo "==> Fetching $DEPLOY_REF"
+          git fetch --prune origin
+          git reset --hard "$DEPLOY_REF"
+
+          echo "==> Installing dependencies"
+          npm ci
+          npx playwright install
+
+          echo "==> Building"
+          npm run build
+
+          echo "==> Restarting $SERVICE_NAME"
+          sudo -n /usr/bin/systemctl restart "$SERVICE_NAME"
+
+          sleep 5
+          if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+            echo "Service $SERVICE_NAME is not active after restart" >&2
+            systemctl status "$SERVICE_NAME" --no-pager || true
+            exit 1
+          fi
+          echo "==> Deployed $(git rev-parse --short HEAD)"
+          EOF
