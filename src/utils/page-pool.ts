@@ -1,4 +1,5 @@
 import { Browser, Page } from "playwright";
+import type { TStorageState } from "../type";
 import { log } from "./logger";
 
 interface QueuedRequest {
@@ -15,14 +16,17 @@ interface QueuedRequest {
  * (собственные Service Worker, WebSocket, localStorage).
  * После использования контекст и страница закрываются.
  * Если все слоты заняты — запрос ждёт в очереди.
+ * Сессия хранится объектом: её можно заменить на лету (updateState),
+ * а при удалении или протухании пул утилизируется (dispose).
  */
 export class PagePool {
     private waiting: Array<QueuedRequest> = [];
     private active = 0;
+    private disposedError: Error | null = null;
 
     constructor(
         private readonly browser: Browser,
-        private readonly storageState: string,
+        private storageState: TStorageState,
         private readonly viewport: { width: number; height: number },
         private readonly maxSize: number,
         private readonly label: string
@@ -45,10 +49,31 @@ export class PagePool {
         return context.newPage();
     }
 
+    /** Новые контексты берут новую сессию, уже открытые вкладки дорабатывают со старой */
+    updateState(storageState: TStorageState): void {
+        this.storageState = storageState;
+        log.info(`🗂️ [${this.label}] Сессия обновлена`);
+    }
+
+    /** Сессия удалена или протухла: очередь отклоняем, активные вкладки дорабатывают */
+    dispose(error: Error): void {
+        this.disposedError = error;
+        const waiting = this.waiting;
+        this.waiting = [];
+        for (const req of waiting) {
+            if (req.signal && req.abortListener) req.signal.removeEventListener('abort', req.abortListener);
+            req.reject(error);
+        }
+        log.info(`🗂️ [${this.label}] Пул утилизирован (отклонено из очереди: ${waiting.length})`);
+    }
+
     /** Взять вкладку (или подождать, если все слоты заняты) */
     async acquire(signal?: AbortSignal, reqId?: string): Promise<Page> {
         if (signal?.aborted) {
             throw new Error('ABORTED');
+        }
+        if (this.disposedError) {
+            throw this.disposedError;
         }
 
         if (this.active < this.maxSize) {

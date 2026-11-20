@@ -1,4 +1,5 @@
-FROM node:20-bookworm
+# node:sqlite (хранилище сессий) требует Node >= 22.13
+FROM node:22-bookworm
 
 WORKDIR /app
 
