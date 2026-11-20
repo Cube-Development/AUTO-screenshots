@@ -1,7 +1,6 @@
 import fs from "fs";
-import os from "os";
 import path from "path";
-import { chromium, Page } from "playwright";
+import { Page } from "playwright";
 import { log } from "../utils";
 import { ResourceType } from "../type";
 import { SCREENSHOT_EXTENSION, TEST_SCREENS_DIR, compressScreenshot, getCISDateString } from "./utils";
@@ -20,35 +19,6 @@ const TOTAL_SCREENSHOTS = Math.floor(DURATION_MS / INTERVAL_MS); // 4
 function extractVideoId(url: string): string {
   const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return match?.[1] ?? "unknown";
-}
-
-/** Ручная авторизация Google для YouTube — аналогично Telegram/Instagram */
-export async function ensureYoutubeAuth(auth_path: string) {
-  if (fs.existsSync(auth_path)) return;
-
-  const dir = path.dirname(auth_path);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  const tmpProfile = path.join(os.tmpdir(), `pw_yt_profile_${Date.now()}`);
-  fs.mkdirSync(tmpProfile, { recursive: true });
-
-  const context = await chromium.launchPersistentContext(tmpProfile, {
-    channel: "chrome",
-    headless: false,
-    viewport: { width: 1280, height: 800 },
-    args: ["--disable-blink-features=AutomationControlled"],
-  });
-  const page = context.pages()[0] || await context.newPage();
-
-  console.log("Открылся браузер. Выполните вход в Google аккаунт на YouTube.");
-  await page.goto("https://accounts.google.com");
-
-  console.log("После успешного входа нажмите Enter в консоли.");
-  await new Promise<void>((res) => process.stdin.once("data", () => res()));
-
-  await context.storageState({ path: auth_path });
-  await context.close();
-  console.log(`YouTube auth.json сохранён: ${auth_path}`);
 }
 
 /** Закрывает consent-баннер YouTube (GDPR), если он появился */

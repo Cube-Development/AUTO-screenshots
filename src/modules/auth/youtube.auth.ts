@@ -1,67 +1,44 @@
-// init_youtube_auth.ts
-import { chromium } from "playwright";
+// npm run auth:youtube -- <accountId>
+// Ручной вход в Google/YouTube и экспорт сессии для загрузки в админке
 import fs from "fs";
+import os from "os";
 import path from "path";
-
-// === Папка для сохранения сессии ===
-const AUTH_DIR = path.resolve("src/auth/youtube");
-const AUTH_PATH = path.join(AUTH_DIR, "auth.json");
-
-function ensureDir(p: string) {
-  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
-}
+import { chromium } from "playwright";
+import { exportStorageState, readAccountIdArg, waitForEnter } from "./auth.utils";
 
 async function main() {
-  console.log("=== Инициализация YouTube (Google) сессии ===\n");
-  ensureDir(AUTH_DIR);
+  const accountId = readAccountIdArg("npm run auth:youtube -- <accountId, например логин Google>");
+  console.log("=== Вход в YouTube (Google) ===\n");
 
-  if (fs.existsSync(AUTH_PATH)) {
-    console.log(`[✓] Сессия уже существует: ${AUTH_PATH}`);
-    console.log("Удалите файл вручную, если хотите перелогиниться.");
-    return;
-  }
-
-  // Используем системный Chrome (не Playwright Chromium) — Google блокирует вход через автоматизированные браузеры
-  const userDataDir = path.join(AUTH_DIR, ".chrome_profile");
-  ensureDir(userDataDir);
-
+  // Системный Chrome (не Playwright Chromium): Google блокирует вход через автоматизированные браузеры
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pw_yt_profile_"));
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: "chrome",
     headless: false,
     viewport: { width: 1280, height: 800 },
-    args: [
-      "--disable-blink-features=AutomationControlled",
-    ],
+    args: ["--disable-blink-features=AutomationControlled"],
   });
 
-  const page = context.pages()[0] || await context.newPage();
+  try {
+    const page = context.pages()[0] || await context.newPage();
+    await page.goto("https://accounts.google.com", { waitUntil: "domcontentloaded" });
+    await waitForEnter("1. Войдите в Google аккаунт, затем нажмите Enter...");
 
-  // 1. Логин Google
-  await page.goto("https://accounts.google.com", { waitUntil: "domcontentloaded" });
-  console.log("1. Откроется страница входа Google.");
-  console.log("2. Войдите в Google аккаунт.");
+    await page.goto("https://www.youtube.com", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2000);
 
-  console.log("\nПосле входа в Google нажмите Enter...");
-  await new Promise<void>((resolve) => process.stdin.once("data", () => resolve()));
+    const avatarBtn = await page.$("button#avatar-btn, img.yt-spec-avatar-shape__avatar");
+    if (avatarBtn) {
+      console.log("[✓] YouTube: аватар найден — авторизация успешна.");
+    } else {
+      await waitForEnter("[!] YouTube: аватар не найден. Примите cookies/consent вручную, затем нажмите Enter...");
+    }
 
-  // 2. Проверяем YouTube
-  await page.goto("https://www.youtube.com", { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(2000);
-
-  const avatarBtn = await page.$("button#avatar-btn, img.yt-spec-avatar-shape__avatar");
-  if (avatarBtn) {
-    console.log("[✓] YouTube: аватар найден — авторизация успешна.");
-  } else {
-    console.log("[!] YouTube: аватар не найден. Примите cookies/consent вручную, затем нажмите Enter...");
-    await new Promise<void>((resolve) => process.stdin.once("data", () => resolve()));
+    await exportStorageState(context, "youtube", accountId);
+  } finally {
+    await context.close();
+    fs.rmSync(userDataDir, { recursive: true, force: true });
   }
-
-  // 3. Сохраняем сессию
-  await context.storageState({ path: AUTH_PATH });
-  console.log(`\n[+] Сессия сохранена: ${AUTH_PATH}`);
-
-  await context.close();
-  console.log("=== Google/YouTube авторизация завершена ===");
 }
 
 main().catch((err) => {

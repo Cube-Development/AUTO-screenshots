@@ -5,17 +5,26 @@ import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { SETTINGS } from './config';
 import { ROUTES_SCREENSHOT, postScreenshotRouter, screenshotLimiter } from "./modules/post-screenshot";
-import { screenshotService } from './services';
+import { ROUTES_SESSIONS, sessionsRouter } from "./modules/sessions";
+import { screenshotService, sessionsBackup, sessionsHealth } from './services';
+import { scheduleDailyTask } from './sessions';
 import { log } from './utils';
 import { openApiDocument } from './utils/swagger';
 
 const app = express();
+// До глобального express.json: у роутера сессий свой парсер с лимитом 2 МБ
+app.use(ROUTES_SESSIONS.BASE, sessionsRouter);
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // Инициализация браузера и сессий при старте
 screenshotService.init().catch((err: any) => log.error(`Ошибка прогрева браузера: ${err}`));
+// Раз в сутки: сначала бэкап базы (копия до того, как проверка поменяет статусы), затем живая проверка сессий
+scheduleDailyTask("Бэкап и проверка сессий", SETTINGS.SESSIONS_CHECK_HOUR, async () => {
+  await sessionsBackup.run().catch((err: any) => log.error({ err: err?.message || String(err) }, `Бэкап БД сессий упал`));
+  await sessionsHealth.checkAllScheduled();
+});
 
 // Подключаем Swagger UI
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument));

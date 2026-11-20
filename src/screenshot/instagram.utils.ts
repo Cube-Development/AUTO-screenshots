@@ -1,55 +1,11 @@
 import fs from "fs";
-import os from "os";
 import path from "path";
-import { chromium, Page } from "playwright";
+import { Page } from "playwright";
 import { log } from "../utils";
 import { SETTINGS } from "../config";
 import { IErrorCallback, IPostCapture } from "../type";
-import { ResourceType } from "../type";
+import { ResourceType, SessionError } from "../type";
 import { SCREENSHOT_EXTENSION, TEST_SCREENS_DIR, compressScreenshot, getCISDateString } from "./utils";
-
-export async function ensureInstagramAuth(auth_path: string) {
-  if (fs.existsSync(auth_path)) return;
-
-  const authDir = path.dirname(auth_path);
-  if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
-
-  const tmpProfile = path.join(os.tmpdir(), `pw_ig_profile_${Date.now()}`);
-  fs.mkdirSync(tmpProfile, { recursive: true });
-
-  const context = await chromium.launchPersistentContext(tmpProfile, { 
-    headless: false, 
-    viewport: { width: 1280, height: 800 } 
-  });
-  const page = context.pages()[0] || await context.newPage();
-
-  console.log("Открылся чистый профиль. Перехожу на страницу Instagram...");
-  // Переходим на любой публичный пост, чтобы имитировать естественное поведение
-  await page.goto("https://www.instagram.com/explore/", { waitUntil: "networkidle" });
-  
-  try {
-    // Ищем кнопку "Log In" (может быть ссылкой или кнопкой)
-    const loginButton = page.locator('span:has-text("Log in"), a[href*="/accounts/login"]', { hasText: /Log in/i }).first();
-    if (await loginButton.isVisible()) {
-      console.log("Найдена кнопка входа, нажимаю...");
-      await loginButton.click();
-    } else {
-      console.log("Кнопка входа не найдена сразу, пробую перейти напрямую через безопасный редирект...");
-      await page.goto("https://www.instagram.com/accounts/login/");
-    }
-  } catch (e) {
-    console.log("Ошибка при поиске кнопки логина, пробую прямой переход.");
-    await page.goto("https://www.instagram.com/accounts/login/");
-  }
-
-  console.log("Выполните вход в Instagram вручную в открывшемся окне.");
-  console.log("После успешного входа нажмите Enter в консоли.");
-  await new Promise<void>((res) => process.stdin.once("data", () => res()));
-
-  await context.storageState({ path: auth_path });
-  await context.close();
-  console.log(`Instagram auth сохранён в: ${auth_path}`);
-}
 
 export async function captureInstagramPostScreenshot(page: Page, postUrl: string, signal?: AbortSignal, reqId?: string): Promise<Buffer> {
   const logCtx = { id: reqId, type: ResourceType.INSTAGRAM, url: postUrl };
@@ -91,6 +47,11 @@ export async function captureInstagramPostScreenshot(page: Page, postUrl: string
         throw new Error("PAGE_LOAD_TIMEOUT");
       }
       throw navError;
+    }
+
+    // Без входа Instagram редиректит на страницу логина — сессия протухла
+    if (page.url().includes("/accounts/login")) {
+      throw new SessionError("SESSION_EXPIRED", "Редирект на /accounts/login");
     }
 
     // 2. Инъекция CSS для скрытия оверлея ошибки (надежнее, чем JS)

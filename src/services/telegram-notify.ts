@@ -61,6 +61,24 @@ export async function notifyTelegram(
   }
 }
 
+/**
+ * Fire-and-forget текстовое уведомление (HTML) в тот же чат, например о протухшей сессии.
+ * Не бросает ошибки наружу.
+ */
+export async function notifyTelegramText(text: string): Promise<void> {
+  const token = SETTINGS.TG_BOT_TOKEN;
+  const chatId = SETTINGS.TG_CHAT_ID;
+  if (!token || !chatId) return;
+
+  try {
+    await sendTelegramMessage(`https://api.telegram.org/bot${token}`, chatId, text, SETTINGS.TG_TOPIC_ID);
+    log.info(`📩 Уведомление отправлено в TG бот`);
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.description || error.message;
+    log.warn(`⚠️ Не удалось отправить уведомление в TG бот: ${errorMsg}`);
+  }
+}
+
 async function sendTelegramFile(
   baseUrl: string,
   method: string,

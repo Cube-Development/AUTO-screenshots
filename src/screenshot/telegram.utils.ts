@@ -1,10 +1,9 @@
 import fs from "fs";
-import os from "os";
 import path from "path";
-import { chromium, Page } from "playwright";
+import { Page } from "playwright";
 import { log } from "../utils";
 import { SETTINGS } from "../config";
-import { ResourceType } from "../type";
+import { ResourceType, SessionError } from "../type";
 import { SCREENSHOT_EXTENSION, TEST_SCREENS_DIR, compressScreenshot, getCISDateString } from "./utils";
 import { extractPostId, waitForKTargetMessage } from "./telegram-message";
 
@@ -58,24 +57,14 @@ export function tryResolveDirectTelegramKLink(link: string): string | null {
   return `https://web.telegram.org/k/#?tgaddr=${encodeURIComponent(tgaddr)}`;
 }
 
-export async function ensureTelegramAuth(auth_path: string) {
-  if (fs.existsSync(auth_path)) return;
-
-  const tmpProfile = path.join(os.tmpdir(), `pw_profile_${Date.now()}`);
-  fs.mkdirSync(tmpProfile, { recursive: true });
-
-  const context = await chromium.launchPersistentContext(tmpProfile, { headless: false, viewport: { width: 1280, height: 800 } });
-  const page = context.pages()[0] || await context.newPage();
-
-  console.log("Открылся чистый профиль. Выполните вход в Telegram Web вручную.");
-  await page.goto("https://web.telegram.org/k/");
-
-  console.log("После успешного входа нажмите Enter в консоли.");
-  await new Promise<void>((res) => process.stdin.once("data", () => res()));
-
-  await context.storageState({ path: auth_path });
-  await context.close();
-  console.log("auth.json сохранён из чистого профиля.");
+/** Web K стирает user_auth, когда Telegram отозвал ключ: без него — только страница входа */
+async function hasKUserAuth(page: Page): Promise<boolean> {
+  return page
+    .evaluate(() => {
+      const auth = localStorage.getItem("user_auth");
+      return auth !== null && auth !== "null" && auth.length > 0;
+    })
+    .catch(() => true);
 }
 
 async function dismissKSuggestions(page: Page): Promise<void> {
@@ -131,7 +120,9 @@ async function warmupKSession(page: Page, logCtx: Record<string, unknown>): Prom
       const auth = localStorage.getItem("user_auth");
       return auth !== null && auth !== "null" && auth.length > 0;
     }, null, { timeout: TG_AUTH_WAIT_MS })
-    .catch(() => log.warn(logCtx, "user_auth не найден после прогрева, продолжаем"));
+    .catch(() => {
+      throw new SessionError("SESSION_EXPIRED", "user_auth не найден после прогрева Web K");
+    });
   await page.waitForTimeout(TG_WS_SETTLE_MS);
 }
 
@@ -314,6 +305,9 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
     } else {
       await page.goto(target, { waitUntil: "domcontentloaded", timeout: TG_GOTO_TIMEOUT_MS }).catch(() => null);
       await page.waitForTimeout(TG_AFTER_GOTO_MS);
+      if (page.url().includes("web.telegram.org") && !(await hasKUserAuth(page))) {
+        throw new SessionError("SESSION_EXPIRED", "user_auth отсутствует в Web K");
+      }
       await dismissTelegramModals(page, logCtx);
     }
 

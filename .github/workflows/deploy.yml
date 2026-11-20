@@ -35,14 +35,18 @@ jobs:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || secrets.DEPLOY_PATH }}
           SERVICE_NAME: ${{ vars.SERVICE_NAME || secrets.SERVICE_NAME }}
           DEPLOY_REF: ${{ github.sha }}
+          # Ключ шифрования сессий в SQLite: тот же, которым зашифрована перенесённая data/sessions.db
+          SESSIONS_ENC_KEY: ${{ secrets.SESSIONS_ENC_KEY }}
         run: |
           if [ -z "$DEPLOY_PATH" ] || [ -z "$SERVICE_NAME" ]; then
             echo "DEPLOY_PATH and SERVICE_NAME must be set as repository variables or secrets" >&2
             exit 1
           fi
 
-          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "DEPLOY_PATH='$DEPLOY_PATH' SERVICE_NAME='$SERVICE_NAME' DEPLOY_REF='$DEPLOY_REF' bash -se" <<'EOF'
+          # Секрет уходит через stdin, а не аргументом ssh: так он не виден в списке процессов сервера
+          {
+          printf 'export SESSIONS_ENC_KEY=%q\n' "$SESSIONS_ENC_KEY"
+          cat <<'EOF'
           set -euo pipefail
 
           # Неинтерактивная SSH-сессия не читает .bashrc, поэтому nvm подключаем явно.
@@ -53,6 +57,22 @@ jobs:
           fi
 
           cd "$DEPLOY_PATH"
+
+          # Проверки до git reset и рестарта: при ошибке прод остаётся на старой версии
+          echo "==> Checking Node (node:sqlite needs >= 22.13)"
+          node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 13) ? 0 : 1)' \
+            || { echo "Node $(node -v) is too old for node:sqlite: run 'nvm install 22 && nvm alias default 22'" >&2; exit 1; }
+
+          echo "==> Sessions secrets"
+          touch .env
+          if [ -n "${SESSIONS_ENC_KEY:-}" ]; then
+            { grep -v '^SESSIONS_ENC_KEY=' .env || true; } > .env.tmp
+            printf 'SESSIONS_ENC_KEY=%s\n' "$SESSIONS_ENC_KEY" >> .env.tmp
+            mv .env.tmp .env
+          fi
+          chmod 600 .env
+          grep -q '^SESSIONS_ENC_KEY=.' .env \
+            || { echo "SESSIONS_ENC_KEY is empty: add the SESSIONS_ENC_KEY repository secret" >&2; exit 1; }
 
           echo "==> Fetching $DEPLOY_REF"
           git fetch --prune origin
@@ -65,6 +85,12 @@ jobs:
           echo "==> Building"
           npm run build
 
+          # Своя база или стартовая копия из репо (seed приезжает с git reset выше)
+          DB_PATH=$({ grep '^SESSIONS_DB_PATH=' .env || true; } | tail -n 1 | cut -d= -f2-)
+          DB_PATH=${DB_PATH:-./data/sessions.db}
+          [ -f "$DB_PATH" ] || [ -f ./seed/sessions.db ] \
+            || { echo "Neither $DB_PATH nor seed/sessions.db found: nothing to take sessions from" >&2; exit 1; }
+
           echo "==> Restarting $SERVICE_NAME"
           sudo -n /usr/bin/systemctl restart "$SERVICE_NAME"
 
@@ -76,3 +102,5 @@ jobs:
           fi
           echo "==> Deployed $(git rev-parse --short HEAD)"
           EOF
+          } | ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' SERVICE_NAME='$SERVICE_NAME' DEPLOY_REF='$DEPLOY_REF' bash -se"

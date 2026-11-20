@@ -17,4 +17,13 @@ export class SETTINGS {
   static get TEST_SCREENSHOTS()   { return env.TEST_SCREENSHOTS === "true"; }
   static get MAX_SCREENSHOT_LIMIT(){ return env.MAX_SCREENSHOT_LIMIT; }
   static get PORT()               { return env.PORT; }
+
+  // Хранилище сессий
+  static get SESSIONS_DB_PATH()   { return env.SESSIONS_DB_PATH; }
+  static get SESSIONS_SEED_PATH() { return env.SESSIONS_SEED_PATH; }
+  static get SESSIONS_CHECK_HOUR(){ return env.SESSIONS_CHECK_HOUR; }
+  static get SESSIONS_BACKUP_DIR(){ return env.SESSIONS_BACKUP_DIR; }
+  static get SESSIONS_BACKUP_KEEP(){ return env.SESSIONS_BACKUP_KEEP; }
+  static get SESSIONS_ENC_KEY()   { return Buffer.from(env.SESSIONS_ENC_KEY, "base64"); }
+  static get LEGACY_AUTH_DIR()    { return env.LEGACY_AUTH_DIR; }
 }

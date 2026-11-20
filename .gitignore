@@ -32,3 +32,11 @@ dist-ssr
 /src/tests/screenshots/debug
 /src/tests/screenshots/debug-k
 /src/tests/screenshots/html
+# Сессии: только в SQLite вне репо, никогда в git
+src/auth/
+data/
+*.db
+# Стартовая копия базы: сессии в ней зашифрованы SESSIONS_ENC_KEY (GitHub secret)
+!seed/sessions.db
+*.db-*
+sessions-export/

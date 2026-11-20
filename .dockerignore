@@ -6,3 +6,11 @@ dist
 *.env
 *.log
 logs
+
+src/auth
+data
+*.db
+# Стартовая копия базы нужна образу: без неё на новом сервере сессий не будет
+!seed/sessions.db
+*.db-*
+sessions-export
