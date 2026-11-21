@@ -109,13 +109,20 @@ export class ScreenshotService {
         if (this.sharedBrowser?.isConnected()) return this.sharedBrowser;
         if (this.browserPromise) return this.browserPromise;
 
-        this.browserPromise = chromium.launch({
-            headless: true,
-            args: ['--disable-gpu', '--disable-dev-shm-usage', '--no-sandbox']
-        }).then(b => {
+        const launchOptions = { headless: true, args: ['--disable-gpu', '--disable-dev-shm-usage', '--no-sandbox'] };
+        // Google Chrome: в Chromium из Playwright нет H.264, видео рилсов/сторис/YouTube не играет.
+        // Chrome не установлен — работаем на Chromium: всё, кроме видео, снимается так же
+        let launchedChannel: string | undefined = "chrome";
+        const launch = chromium.launch({ ...launchOptions, channel: "chrome" }).catch((err) => {
+            log.warn(`⚠️ Google Chrome не запустился, откат на Chromium (видео будет обложкой/чёрным): ${String(err).split("\n")[0]}`);
+            launchedChannel = undefined;
+            return chromium.launch(launchOptions);
+        });
+
+        this.browserPromise = launch.then(b => {
             this.sharedBrowser = b;
             this.browserPromise = null;
-            log.info("🌐 Chromium запущен (shared instance)");
+            log.info(`🌐 Браузер запущен (shared instance, ${launchedChannel ?? "chromium"} ${b.version()})`);
 
             // Изоляция: при падении Chromium сбрасываем состояние без краша процесса
             b.on('disconnected', () => {

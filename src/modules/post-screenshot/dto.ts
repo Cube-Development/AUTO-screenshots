@@ -16,7 +16,7 @@ export const PostScreenShotSchema = z.object({
       message: "URL должен быть для Telegram (https://t.me/ или https://telegram.me/), Instagram (https://www.instagram.com/) или YouTube (https://youtube.com/watch)",
     })
     .openapi({
-      description: "URL для скриншота (Telegram, Instagram или YouTube)",
+      description: "URL для скриншота: Telegram, YouTube или Instagram (пост, рилс, сторис https://www.instagram.com/stories/<user>/<id>/)",
       example: "https://www.instagram.com/reel/DQHfm-FiNrG/?igsh=c2ZpNG4wYXU0a3dx",
     }),
   user_bot_id: z.string().optional().openapi({

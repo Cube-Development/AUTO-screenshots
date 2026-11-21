@@ -26,15 +26,15 @@ async function logoutTelegram(page: Page): Promise<void> {
 /** Тот же запрос, что делает кнопка «Выйти» на сайте; csrftoken берётся из cookie */
 async function logoutInstagram(page: Page): Promise<void> {
   await page.goto("https://www.instagram.com/", { waitUntil: "domcontentloaded", timeout: STEP_TIMEOUT_MS });
-  const status = await page.evaluate(async (appId) => {
+  // Без async внутри evaluate: target es2016 превращает его в __awaiter, которого в браузере нет
+  const status = await page.evaluate((appId) => {
     const csrf = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1] ?? "";
-    const response = await fetch("/api/v1/web/accounts/logout/ajax/", {
+    return fetch("/api/v1/web/accounts/logout/ajax/", {
       method: "POST",
       credentials: "include",
       headers: { "X-CSRFToken": csrf, "X-IG-App-ID": appId, "Content-Type": "application/x-www-form-urlencoded" },
       body: "one_tap_app_login=0",
-    });
-    return response.status;
+    }).then((response) => response.status);
   }, INSTAGRAM_APP_ID);
   if (status >= 400) throw new Error(`Instagram ответил ${status} на выход`);
 }

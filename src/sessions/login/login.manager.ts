@@ -104,7 +104,8 @@ export class SessionLoginManager {
     let entry: ILoginEntry;
     try {
       const browser = await this.getBrowser();
-      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      // en-US: драйверы распознают ошибки и кнопки платформ по английскому тексту
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "en-US" });
       // newPage может упасть — контекст тогда закрываем сами, в logins он ещё не попал
       const page = await context.newPage().catch(async (err) => {
         await context.close().catch(() => null);

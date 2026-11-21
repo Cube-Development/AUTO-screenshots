@@ -45,6 +45,8 @@ export class PagePool {
         const context = await this.browser.newContext({
             storageState: this.storageState,
             viewport: this.viewport,
+            // Проверки страниц идут по английскому тексту; Chrome иначе берёт язык ОС
+            locale: "en-US",
         });
         return context.newPage();
     }

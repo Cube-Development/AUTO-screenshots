@@ -71,7 +71,7 @@ export async function checkStorageState(
   // Браузер не создал контекст (упал, закрыт) — тоже «проверить не удалось», а не обрыв всей массовой проверки
   let context: Awaited<ReturnType<Browser["newContext"]>> | null = null;
   try {
-    context = await browser.newContext({ storageState: state, viewport: { width: 1280, height: 900 } });
+    context = await browser.newContext({ storageState: state, viewport: { width: 1280, height: 900 }, locale: "en-US" });
     const page = await context.newPage();
     return await CHECKERS[platform](page);
   } catch (err: any) {

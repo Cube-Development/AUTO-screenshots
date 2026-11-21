@@ -15,7 +15,8 @@ Auto Screenshots Server предоставляет HTTP API для автома�
 
 ## Требования
 
-- **Node.js** 18+ 
+- **Node.js** 18+
+- **Google Chrome** на сервере (один раз, нужен root): `sudo npx playwright install --with-deps chrome`. В Chromium из Playwright нет H.264: видео рилсов, сторис и YouTube не играет. Без Chrome сервис сам откатится на Chromium
 
 ## Установка
 
@@ -76,6 +77,12 @@ LEGACY_AUTH_DIR=
 | `SESSIONS_BACKUP_KEEP` | Сколько последних бэкапов хранить (по умолчанию 7) | ❌ |
 | `SESSIONS_SEED_PATH` | Стартовая копия базы для первого запуска (по умолчанию `./seed/sessions.db`) | ❌ |
 | `LEGACY_AUTH_DIR` | Папка со старыми `auth.json` для разового импорта в пустую базу. Не задано — импорта нет | ❌ |
+
+## Instagram: пост, рилс, сторис
+
+- Пост и рилс: `/p/<code>/`, `/reel/<code>/` (рилс открывается как пост), в т.ч. новый вид `/<user>/p/<code>/`.
+- Сторис: `/stories/<user>/<id>/` (ссылка «Поделиться») или `/stories/<user>/` — текущая сторис. Сервис подтверждает «View as …?» (аккаунт сессии попадает в зрители), ставит сторис на паузу и снимает карточку с автором и временем.
+- Ошибки сторис (`SCREENSHOT_FAILED: …`): `STORY_EXPIRED` — сторис с этим id уже нет (Instagram подменил бы её текущей, поэтому id сверяется), `STORY_NOT_AVAILABLE` — у аккаунта нет активных сторис, `STORY_NOT_FOUND` — аккаунта нет, `PRIVATE_ACCOUNT_INSTAGRAM` — закрытый аккаунт.
 
 ## Сессии
 
