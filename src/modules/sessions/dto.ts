@@ -136,8 +136,14 @@ const LoginMethodSchema = z.enum(["phone", "qr"]).default("phone").openapi({
 export const LoginStartSchema = z.object({
   method: LoginMethodSchema,
   phone: PhoneSchema.optional().openapi({ description: "Telegram: номер аккаунта", example: "+998901234567" }),
-  username: z.string().trim().transform((value) => value.replace(/^@/, "")).pipe(z.string().regex(/^[A-Za-z0-9_.]{1,30}$/, "Логин Instagram: латиница, цифры, _ и ., до 30 символов")).optional().openapi({
-    description: "Instagram: логин (с @ или без)",
+  // Instagram принимает в форме входа логин, почту или телефон; account_id сессии всё равно будет настоящим логином
+  username: z.string().trim().transform((value) => value.replace(/^@/, "")).pipe(
+    z.string().regex(
+      /^(?:[A-Za-z0-9_.]{1,30}|[^\s@]+@[^\s@]+\.[^\s@]+|\+?[0-9][0-9 ()-]{6,20})$/,
+      "Instagram: логин (латиница, цифры, _ и ., до 30 символов), почта или телефон",
+    ),
+  ).optional().openapi({
+    description: "Instagram: логин (с @ или без), почта или телефон аккаунта. В ответе session.account_id — настоящий логин",
     example: "blogix.ig",
   }),
   password: z.string().min(1).max(256).optional().openapi({ description: "Instagram: пароль, нигде не сохраняется" }),

@@ -101,7 +101,7 @@ LEGACY_AUTH_DIR=
 
 | Шаг | Ручка |
 |---|---|
-| Старт | `POST /sessions/:platform/login`. Telegram: `{phone}`, Instagram: `{username, password}`, плюс `label?` и `expected_account_id?` |
+| Старт | `POST /sessions/:platform/login`. Telegram: `{phone}`, Instagram: `{username, password}` (`username` — логин, почта или телефон; `account_id` сессии — настоящий логин), плюс `label?` и `expected_account_id?` |
 | Код | `POST /sessions/login/:loginId/code {code}` |
 | Пароль 2FA (Telegram) | `POST /sessions/login/:loginId/password {password}` |
 | Отправить код ещё раз | `POST /sessions/login/:loginId/resend` |
