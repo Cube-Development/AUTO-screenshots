@@ -17,7 +17,34 @@ export async function waitForLoginOutcome(page: Page, probe: TLoginProbe, stage:
     if (result) throw new SessionError("LOGIN_REJECTED", result.error);
     await page.waitForTimeout(POLL_MS);
   }
-  throw new SessionError("LOGIN_FAILED", `Нет результата шага «${stage}» за ${LOGIN_STEP_TIMEOUT_MS / 1000}с (${page.url()})`);
+  const inputs = await describeInputs(page);
+  throw new SessionError(
+    "LOGIN_FAILED",
+    `Нет результата шага «${stage}» за ${LOGIN_STEP_TIMEOUT_MS / 1000}с (${page.url()})${inputs ? `; поля на странице: ${inputs}` : ""}`,
+  );
+}
+
+/**
+ * Видимые поля ввода кратко: «input[inputmode=numeric,maxlength=1]×5». Когда платформа меняет вёрстку
+ * и шаг не распознан, по этому сразу видно, какой селектор нужен — без доступа к живому аккаунту
+ */
+async function describeInputs(page: Page): Promise<string> {
+  const fields = await page
+    .evaluate(() =>
+      Array.from(document.querySelectorAll("input, [contenteditable='true']"))
+        .filter((el) => (el as HTMLElement).offsetParent !== null)
+        .map((el) => {
+          const attrs = ["type", "inputmode", "maxlength", "autocomplete"]
+            .map((name) => (el.getAttribute(name) ? `${name}=${el.getAttribute(name)}` : ""))
+            .filter(Boolean)
+            .join(",");
+          return `${el.tagName.toLowerCase()}${attrs ? `[${attrs}]` : ""}`;
+        }),
+    )
+    .catch(() => [] as string[]);
+  const counts = new Map<string, number>();
+  for (const field of fields) counts.set(field, (counts.get(field) ?? 0) + 1);
+  return [...counts].map(([field, count]) => (count > 1 ? `${field}×${count}` : field)).join(", ");
 }
 
 /** Жмёт первую видимую кнопку/ссылку с подходящим текстом; false — такой нет */

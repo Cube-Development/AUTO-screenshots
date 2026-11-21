@@ -8,7 +8,20 @@ const PHONE_LOGIN_BUTTON = "button.btn-primary";
 /** На странице телефона поля — div[contenteditable]; input появляется только на шагах кода и пароля */
 const PHONE_INPUT = '.input-field-input[inputmode="decimal"]';
 const NEXT_BUTTON = "button.btn-primary.btn-color-primary";
-const CODE_INPUT = 'input.input-field-input:not([type="password"])';
+/**
+ * Поле кода: в старом Web K одно поле, в новом — клетки по цифре (CSS-модули с хешем).
+ * Перечислены признаки, а не классы: autocomplete/inputmode/maxlength переживают смену вёрстки
+ */
+const CODE_INPUT = [
+  'input[autocomplete="one-time-code"]',
+  'input[inputmode="numeric"]',
+  'input[maxlength="1"]',
+  'input.input-field-input:not([type="password"])',
+].join(", ");
+/** Экран кода узнаётся и по тексту: «We have sent you a message in Telegram with the code» и т.п. */
+const CODE_SENT_TEXT = /sent you (a message|an sms|a code|the code)|with the code|we've sent|отправили (вам )?(сообщение|код|sms)|с кодом/i;
+/** Новый Web K пишет ошибку кода текстом под клетками, а не в label поля */
+const CODE_ERROR_TEXT = /invalid code|incorrect code|wrong code|code (is )?(invalid|incorrect|expired)|неверный код|код (неверн|устарел)/i;
 const PASSWORD_INPUT = 'input[type="password"]';
 const LOGGED_IN = "#column-left .chatlist";
 /** Web K помечает само поле (.input-field-input.error, aria-invalid) и пишет текст ошибки в соседний label */
@@ -32,6 +45,12 @@ const hasUserAuth = (page: Page) =>
     })
     .catch(() => false);
 
+const anyVisible = (page: Page, selector: string) =>
+  page.locator(selector).filter({ visible: true }).count().then((count) => count > 0).catch(() => false);
+
+const textVisible = (page: Page, text: RegExp) =>
+  page.getByText(text).filter({ visible: true }).count().then((count) => count > 0).catch(() => false);
+
 /** Общие исходы любого шага: вход выполнен или Telegram показал ошибку */
 async function probeCommon(page: Page): Promise<ENUM_LOGIN_STEP_TYPE | { error: string } | null> {
   if ((await isVisible(page, LOGGED_IN)) || (await hasUserAuth(page))) return ENUM_LOGIN_STEP.DONE;
@@ -39,11 +58,30 @@ async function probeCommon(page: Page): Promise<ENUM_LOGIN_STEP_TYPE | { error: 
   return error ? { error } : null;
 }
 
-const afterPhone: TLoginProbe = async (page) =>
-  (await probeCommon(page)) ?? ((await isVisible(page, CODE_INPUT)) ? ENUM_LOGIN_STEP.CODE : null);
+/** Экран ввода кода: по тексту «отправили код» или по видимому полю кода (одному или клеткам) */
+export const isCodeScreen = async (page: Page) => (await textVisible(page, CODE_SENT_TEXT)) || (await anyVisible(page, CODE_INPUT));
 
-const afterCode: TLoginProbe = async (page) =>
-  (await probeCommon(page)) ?? ((await isVisible(page, PASSWORD_INPUT)) ? ENUM_LOGIN_STEP.PASSWORD : null);
+const afterPhone: TLoginProbe = async (page) =>
+  (await probeCommon(page)) ?? ((await isCodeScreen(page)) ? ENUM_LOGIN_STEP.CODE : null);
+
+const afterCode: TLoginProbe = async (page) => {
+  const common = await probeCommon(page);
+  if (common) return common;
+  if (await anyVisible(page, PASSWORD_INPUT)) return ENUM_LOGIN_STEP.PASSWORD;
+  const codeError = await page.getByText(CODE_ERROR_TEXT).filter({ visible: true }).first().innerText().catch(() => null);
+  return codeError ? { error: codeError.trim() } : null;
+};
+
+/**
+ * Ввод кода: в клетках фокус уже стоит на первой — кликаем, только если видно поле.
+ * Backspace стирает прошлую попытку (по пустой клетке он переходит на предыдущую)
+ */
+async function enterCode(page: Page, code: string): Promise<void> {
+  const field = page.locator(CODE_INPUT).filter({ visible: true }).first();
+  if ((await field.count().catch(() => 0)) > 0) await field.click({ timeout: 5_000 }).catch(() => null);
+  for (let i = 0; i < 8; i++) await page.keyboard.press("Backspace");
+  await page.keyboard.type(code, { delay: 60 });
+}
 
 const afterPassword: TLoginProbe = probeCommon;
 
@@ -77,7 +115,7 @@ export const telegramLoginDriver: ILoginDriver = {
 
   async submitCode(page: Page, code: string) {
     // Web K отправляет код сам, когда набрана нужная длина; Enter — на случай другой длины
-    await typeInto(page, CODE_INPUT, code);
+    await enterCode(page, code);
     await page.keyboard.press("Enter").catch(() => null);
     return waitForLoginOutcome(page, afterCode, "код");
   },
@@ -103,7 +141,7 @@ export const telegramLoginDriver: ILoginDriver = {
   async pollQr(page: Page) {
     if ((await isVisible(page, LOGGED_IN)) || (await hasUserAuth(page))) return ENUM_LOGIN_STEP.DONE;
     // После скана аккаунт с 2FA попадает на страницу облачного пароля
-    if (await isVisible(page, PASSWORD_INPUT)) return ENUM_LOGIN_STEP.PASSWORD;
+    if (await anyVisible(page, PASSWORD_INPUT)) return ENUM_LOGIN_STEP.PASSWORD;
     return null;
   },
 
