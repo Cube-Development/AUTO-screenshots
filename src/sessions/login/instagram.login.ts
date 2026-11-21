@@ -97,8 +97,23 @@ async function fillLoginForm(page: Page, username: string, password: string): Pr
   const pass = page.locator(PASSWORD_INPUT).first();
   const cookies = page.getByRole("button", { name: COOKIE_BUTTON }).first();
   const logIn = page.getByRole("button", { name: /^log in$/i }).or(page.getByRole("link", { name: /^log in$/i })).first();
+  const unavailable = page.getByText(/page isn't available/i).first();
+  let triedHome = false;
   const deadline = Date.now() + LOGIN_STEP_TIMEOUT_MS;
   while (Date.now() < deadline) {
+    // Instagram иногда отдаёт заглушку вместо /accounts/login/ — пробуем вход с главной, второй раз не крутимся
+    if (await unavailable.isVisible().catch(() => false)) {
+      if (triedHome) {
+        throw new SessionError(
+          "LOGIN_FAILED",
+          `Instagram отдаёт этому серверу «Page isn't available» вместо страницы входа (${page.url()}). ` +
+            `Похоже, ограничение по IP сервера или браузеру — загрузите файл сессии (npm run auth:instagram)`,
+        );
+      }
+      triedHome = true;
+      await page.goto("https://www.instagram.com/", { waitUntil: "domcontentloaded", timeout: LOGIN_STEP_TIMEOUT_MS });
+      continue;
+    }
     if (await cookies.isVisible().catch(() => false)) {
       await cookies.click({ timeout: 3_000 }).catch(() => null);
     } else if ((await user.isVisible().catch(() => false)) && (await pass.isVisible().catch(() => false))) {
