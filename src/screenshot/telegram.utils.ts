@@ -6,6 +6,7 @@ import { SETTINGS } from "../config";
 import { ResourceType, SessionError } from "../type";
 import { SCREENSHOT_EXTENSION, TEST_SCREENS_DIR, compressScreenshot, getCISDateString } from "./utils";
 import { extractPostId, waitForKTargetMessage } from "./telegram-message";
+import { TELEGRAM_ACCOUNT_ID_JS } from "../sessions/telegram-auth";
 
 const TG_GOTO_TIMEOUT_MS = 60_000;
 const TG_CHAT_OPEN_TIMEOUT_MS = 45_000;
@@ -57,13 +58,11 @@ export function tryResolveDirectTelegramKLink(link: string): string | null {
   return `https://web.telegram.org/k/#?tgaddr=${encodeURIComponent(tgaddr)}`;
 }
 
-/** Web K стирает user_auth, когда Telegram отозвал ключ: без него — только страница входа */
+/** Web K стирает ключи авторизации (user_auth / accountN.userId), когда Telegram её отозвал: тогда только вход */
 async function hasKUserAuth(page: Page): Promise<boolean> {
   return page
-    .evaluate(() => {
-      const auth = localStorage.getItem("user_auth");
-      return auth !== null && auth !== "null" && auth.length > 0;
-    })
+    .evaluate<string | null>(TELEGRAM_ACCOUNT_ID_JS)
+    .then(Boolean)
     .catch(() => true);
 }
 
@@ -116,12 +115,9 @@ async function warmupKSession(page: Page, logCtx: Record<string, unknown>): Prom
   log.info(logCtx, "Прогрев Telegram Web K...");
   await page.goto("https://web.telegram.org/k/", { waitUntil: "domcontentloaded", timeout: TG_WARMUP_TIMEOUT_MS });
   await page
-    .waitForFunction(() => {
-      const auth = localStorage.getItem("user_auth");
-      return auth !== null && auth !== "null" && auth.length > 0;
-    }, null, { timeout: TG_AUTH_WAIT_MS })
+    .waitForFunction(TELEGRAM_ACCOUNT_ID_JS, null, { timeout: TG_AUTH_WAIT_MS })
     .catch(() => {
-      throw new SessionError("SESSION_EXPIRED", "user_auth не найден после прогрева Web K");
+      throw new SessionError("SESSION_EXPIRED", "Авторизация Web K не найдена после прогрева (нет user_auth и accountN.userId)");
     });
   await page.waitForTimeout(TG_WS_SETTLE_MS);
 }
@@ -135,12 +131,8 @@ async function waitForKConnectionReady(page: Page, logCtx: Record<string, unknow
 
   await page
     .waitForFunction(
-      () => {
-        const auth = localStorage.getItem("user_auth");
-        if (!auth || auth === "null" || auth.length === 0) return false;
-        if (!document.getElementById("page-chats")) return false;
-        return document.querySelector(".chatlist-chat, a[data-peer-id]") !== null;
-      },
+      `${TELEGRAM_ACCOUNT_ID_JS} !== null && !!document.getElementById("page-chats")
+        && document.querySelector(".chatlist-chat, a[data-peer-id]") !== null`,
       null,
       { timeout: TG_APP_READY_TIMEOUT_MS },
     )
@@ -306,7 +298,7 @@ export async function handleTelegramLink(page: Page, link: string, signal?: Abor
       await page.goto(target, { waitUntil: "domcontentloaded", timeout: TG_GOTO_TIMEOUT_MS }).catch(() => null);
       await page.waitForTimeout(TG_AFTER_GOTO_MS);
       if (page.url().includes("web.telegram.org") && !(await hasKUserAuth(page))) {
-        throw new SessionError("SESSION_EXPIRED", "user_auth отсутствует в Web K");
+        throw new SessionError("SESSION_EXPIRED", "Авторизации Web K нет (user_auth / accountN.userId)");
       }
       await dismissTelegramModals(page, logCtx);
     }

@@ -1,5 +1,6 @@
 import { Browser, Page } from "playwright";
 import { ENUM_SESSION_PLATFORM, ENUM_SESSION_PLATFORM_TYPE, ISessionCheckResult, TStorageState } from "../type";
+import { TELEGRAM_ACCOUNT_ID_JS } from "./telegram-auth";
 
 const CHECK_TIMEOUT_MS = 30_000;
 const CHECK_POLL_MS = 500;
@@ -11,12 +12,14 @@ export const TELEGRAM_SIGN_PAGE = ".page-sign, .page-signQR, [class*=\"_pageSign
 /** Ждём, что раньше станет видно: признак входа (ok) или форма логина */
 async function waitForEither(page: Page, okSelector: string, loginSelector: string): Promise<ISessionCheckResult> {
   const deadline = Date.now() + CHECK_TIMEOUT_MS;
-  const ok = page.locator(okSelector).first();
-  const login = page.locator(loginSelector).first();
+  // Только видимые: первый из нескольких совпадений бывает скрыт (у Web K два .chatlist, один — архив)
+  const ok = page.locator(okSelector).filter({ visible: true });
+  const login = page.locator(loginSelector).filter({ visible: true });
+  const shown = (locator: typeof ok) => locator.count().then((count) => count > 0).catch(() => false);
 
   while (Date.now() < deadline) {
-    if (await ok.isVisible().catch(() => false)) return { ok: true, error: null };
-    if (await login.isVisible().catch(() => false)) return { ok: false, error: "Открылась страница входа" };
+    if (await shown(ok)) return { ok: true, error: null };
+    if (await shown(login)) return { ok: false, error: "Открылась страница входа" };
     await page.waitForTimeout(CHECK_POLL_MS);
   }
   return { ok: false, error: `Не дождались ни входа, ни страницы входа за ${CHECK_TIMEOUT_MS / 1000}с`, inconclusive: true };
@@ -24,17 +27,12 @@ async function waitForEither(page: Page, okSelector: string, loginSelector: stri
 
 async function checkTelegram(page: Page): Promise<ISessionCheckResult> {
   await page.goto("https://web.telegram.org/k/", { waitUntil: "domcontentloaded", timeout: CHECK_GOTO_TIMEOUT_MS });
-  const result = await waitForEither(page, "#column-left .chatlist", TELEGRAM_SIGN_PAGE);
+  const result = await waitForEither(page, "#column-left .chatlist, #page-chats, .chatlist-chat", TELEGRAM_SIGN_PAGE);
   if (!result.ok) return result;
 
-  // Web K стирает user_auth, когда Telegram отозвал ключ авторизации
-  const hasAuth = await page
-    .evaluate(() => {
-      const auth = localStorage.getItem("user_auth");
-      return !!auth && auth !== "null";
-    })
-    .catch(() => false);
-  return hasAuth ? result : { ok: false, error: "user_auth удалён после загрузки" };
+  // Web K стирает ключи авторизации, когда Telegram её отозвал
+  const accountId = await page.evaluate<string | null>(TELEGRAM_ACCOUNT_ID_JS).catch(() => null);
+  return accountId ? result : { ok: false, error: "Авторизация Web K удалена после загрузки (нет user_auth и accountN.userId)" };
 }
 
 async function checkInstagram(page: Page): Promise<ISessionCheckResult> {

@@ -9,7 +9,16 @@ const POLL_MS = 400;
 export type TLoginProbe = (page: Page) => Promise<ENUM_LOGIN_STEP_TYPE | { error: string } | null>;
 
 /** Опрашивает страницу до результата шага; ошибка платформы — LOGIN_REJECTED, тишина — LOGIN_FAILED */
-export async function waitForLoginOutcome(page: Page, probe: TLoginProbe, stage: string): Promise<ENUM_LOGIN_STEP_TYPE> {
+/**
+ * diagnose — что платформа считает признаками входа на странице: попадает в ошибку, если шаг не распознан,
+ * чтобы по одной ошибке было видно, какой признак не сработал
+ */
+export async function waitForLoginOutcome(
+  page: Page,
+  probe: TLoginProbe,
+  stage: string,
+  diagnose?: (page: Page) => Promise<string>,
+): Promise<ENUM_LOGIN_STEP_TYPE> {
   const deadline = Date.now() + LOGIN_STEP_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const result = await probe(page).catch(() => null);
@@ -18,9 +27,12 @@ export async function waitForLoginOutcome(page: Page, probe: TLoginProbe, stage:
     await page.waitForTimeout(POLL_MS);
   }
   const inputs = await describeInputs(page);
+  const markers = diagnose ? await diagnose(page).catch(() => "") : "";
   throw new SessionError(
     "LOGIN_FAILED",
-    `Нет результата шага «${stage}» за ${LOGIN_STEP_TIMEOUT_MS / 1000}с (${page.url()})${inputs ? `; поля на странице: ${inputs}` : ""}`,
+    `Нет результата шага «${stage}» за ${LOGIN_STEP_TIMEOUT_MS / 1000}с (${page.url()})` +
+      (inputs ? `; поля на странице: ${inputs}` : "") +
+      (markers ? `; признаки входа: ${markers}` : ""),
   );
 }
 
@@ -61,6 +73,7 @@ export const isVisible = (page: Page, selector: string) =>
 export const visibleText = async (page: Page, selector: string): Promise<string | null> => {
   const locator = page.locator(selector).first();
   if (!(await locator.isVisible().catch(() => false))) return null;
-  const text = (await locator.innerText().catch(() => "")).trim();
+  // Элемент мог пропасть после isVisible: без timeout innerText ждал бы его появления до 30 с
+  const text = (await locator.innerText({ timeout: 1_000 }).catch(() => "")).trim();
   return text || null;
 };

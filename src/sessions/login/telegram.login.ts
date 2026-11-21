@@ -1,6 +1,7 @@
 import { Page } from "playwright";
 import { SessionError } from "../../type";
 import { ENUM_LOGIN_STEP, ENUM_LOGIN_STEP_TYPE, ILoginAccount, ILoginDriver, ILoginStartInput } from "./login.types";
+import { TELEGRAM_ACCOUNT_ID_JS } from "../telegram-auth";
 import { LOGIN_STEP_TIMEOUT_MS, TLoginProbe, clickByText, isVisible, visibleText, waitForLoginOutcome } from "./login.utils";
 
 const WEB_K_URL = "https://web.telegram.org/k/";
@@ -23,7 +24,8 @@ const CODE_SENT_TEXT = /sent you (a message|an sms|a code|the code)|with the cod
 /** Новый Web K пишет ошибку кода текстом под клетками, а не в label поля */
 const CODE_ERROR_TEXT = /invalid code|incorrect code|wrong code|code (is )?(invalid|incorrect|expired)|неверный код|код (неверн|устарел)/i;
 const PASSWORD_INPUT = 'input[type="password"]';
-const LOGGED_IN = "#column-left .chatlist";
+/** Список чатов: «#column-left .chatlist» бывает два (скрытый — архив), поэтому только видимые и шире */
+const LOGGED_IN = "#column-left .chatlist, #page-chats, .chatlist-chat";
 /** Web K помечает само поле (.input-field-input.error, aria-invalid) и пишет текст ошибки в соседний label */
 const ERROR_LABEL = '.input-field:has(.input-field-input.error, [aria-invalid="true"]) label';
 
@@ -37,13 +39,10 @@ async function waitForQr(page: Page): Promise<void> {
   await container.locator(".preloader").first().waitFor({ state: "detached", timeout: LOGIN_STEP_TIMEOUT_MS }).catch(() => null);
 }
 
-const hasUserAuth = (page: Page) =>
-  page
-    .evaluate(() => {
-      const auth = localStorage.getItem("user_auth");
-      return !!auth && auth !== "null";
-    })
-    .catch(() => false);
+/** id вошедшего аккаунта; null — входа нет (или страница как раз перезагружается после входа) */
+const readAccountId = (page: Page) => page.evaluate<string | null>(TELEGRAM_ACCOUNT_ID_JS).catch(() => null);
+
+const hasUserAuth = async (page: Page) => Boolean(await readAccountId(page));
 
 const anyVisible = (page: Page, selector: string) =>
   page.locator(selector).filter({ visible: true }).count().then((count) => count > 0).catch(() => false);
@@ -53,9 +52,17 @@ const textVisible = (page: Page, text: RegExp) =>
 
 /** Общие исходы любого шага: вход выполнен или Telegram показал ошибку */
 async function probeCommon(page: Page): Promise<ENUM_LOGIN_STEP_TYPE | { error: string } | null> {
-  if ((await isVisible(page, LOGGED_IN)) || (await hasUserAuth(page))) return ENUM_LOGIN_STEP.DONE;
+  if ((await hasUserAuth(page)) || (await anyVisible(page, LOGGED_IN))) return ENUM_LOGIN_STEP.DONE;
   const error = await visibleText(page, ERROR_LABEL);
   return error ? { error } : null;
+}
+
+/** Для ошибки «шаг не распознан»: какие признаки входа нашлись, а какие нет */
+async function diagnoseLogin(page: Page): Promise<string> {
+  const accountId = await readAccountId(page);
+  const chats = await anyVisible(page, LOGGED_IN);
+  const password = await anyVisible(page, PASSWORD_INPUT);
+  return `id аккаунта в localStorage — ${accountId ? "есть" : "нет"}, список чатов — ${chats ? "виден" : "не виден"}, поле пароля — ${password ? "видно" : "нет"}`;
 }
 
 /** Экран ввода кода: по тексту «отправили код» или по видимому полю кода (одному или клеткам) */
@@ -68,7 +75,11 @@ const afterCode: TLoginProbe = async (page) => {
   const common = await probeCommon(page);
   if (common) return common;
   if (await anyVisible(page, PASSWORD_INPUT)) return ENUM_LOGIN_STEP.PASSWORD;
-  const codeError = await page.getByText(CODE_ERROR_TEXT).filter({ visible: true }).first().innerText().catch(() => null);
+  // Проба не должна ждать: innerText по умолчанию ждёт появления элемента до 30 с и съедает весь шаг,
+  // если ошибки нет (а её нет почти всегда — вход как раз идёт). Сначала count(), который не ждёт
+  const errorText = page.getByText(CODE_ERROR_TEXT).filter({ visible: true }).first();
+  if ((await errorText.count().catch(() => 0)) === 0) return null;
+  const codeError = await errorText.innerText({ timeout: 1_000 }).catch(() => null);
   return codeError ? { error: codeError.trim() } : null;
 };
 
@@ -110,20 +121,20 @@ export const telegramLoginDriver: ILoginDriver = {
     await typeInto(page, PHONE_INPUT, input.phone);
     await page.locator(NEXT_BUTTON, { hasText: /next/i }).first().click({ timeout: LOGIN_STEP_TIMEOUT_MS });
 
-    return waitForLoginOutcome(page, afterPhone, "телефон");
+    return waitForLoginOutcome(page, afterPhone, "телефон", diagnoseLogin);
   },
 
   async submitCode(page: Page, code: string) {
     // Web K отправляет код сам, когда набрана нужная длина; Enter — на случай другой длины
     await enterCode(page, code);
     await page.keyboard.press("Enter").catch(() => null);
-    return waitForLoginOutcome(page, afterCode, "код");
+    return waitForLoginOutcome(page, afterCode, "код", diagnoseLogin);
   },
 
   async submitPassword(page: Page, password: string) {
     await typeInto(page, PASSWORD_INPUT, password);
     await page.keyboard.press("Enter");
-    return waitForLoginOutcome(page, afterPassword, "пароль");
+    return waitForLoginOutcome(page, afterPassword, "пароль", diagnoseLogin);
   },
 
   async resendCode(page: Page) {
@@ -139,7 +150,7 @@ export const telegramLoginDriver: ILoginDriver = {
   },
 
   async pollQr(page: Page) {
-    if ((await isVisible(page, LOGGED_IN)) || (await hasUserAuth(page))) return ENUM_LOGIN_STEP.DONE;
+    if ((await hasUserAuth(page)) || (await anyVisible(page, LOGGED_IN))) return ENUM_LOGIN_STEP.DONE;
     // После скана аккаунт с 2FA попадает на страницу облачного пароля
     if (await anyVisible(page, PASSWORD_INPUT)) return ENUM_LOGIN_STEP.PASSWORD;
     return null;
@@ -156,23 +167,13 @@ export const telegramLoginDriver: ILoginDriver = {
   },
 
   async finish(page: Page): Promise<ILoginAccount> {
-    // user_auth = {"dcID":2,"id":7697061334,...} — id аккаунта, он же account_id сессии
+    // id аккаунта = account_id сессии: user_auth.id или accountN.userId; после входа Web K может перезагрузить страницу
     const id = await page
-      .waitForFunction(
-        () => {
-          try {
-            return JSON.parse(localStorage.getItem("user_auth") || "null")?.id ?? null;
-          } catch {
-            return null;
-          }
-        },
-        null,
-        { timeout: LOGIN_STEP_TIMEOUT_MS },
-      )
-      .then((handle) => handle.jsonValue())
+      .waitForFunction(TELEGRAM_ACCOUNT_ID_JS, null, { timeout: LOGIN_STEP_TIMEOUT_MS, polling: 500 })
+      .then((handle) => handle.jsonValue() as Promise<string | null>)
       .catch(() => null);
 
-    if (!id) throw new SessionError("LOGIN_FAILED", "Вход выполнен, но в localStorage нет user_auth");
-    return { accountId: String(id), username: null };
+    if (!id) throw new SessionError("LOGIN_FAILED", "Вход выполнен, но id аккаунта не найден (нет user_auth и accountN.userId)");
+    return { accountId: id, username: null };
   },
 };

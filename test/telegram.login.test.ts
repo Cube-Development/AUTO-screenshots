@@ -65,6 +65,34 @@ describe("Telegram login driver on the new Web K layout", () => {
     await page.close();
   });
 
+  it("sees the login when the first chat list is the hidden archive one", async (t) => {
+    if (!browser) return t.skip("Chromium не установлен");
+    const page = await browser.newPage();
+    // Так выглядит Web K после входа: два #column-left .chatlist, первый скрыт; localStorage на about:blank недоступен
+    await page.setContent(`${NEW_CODE_SCREEN}<template id="after"><div id="column-left">
+      <div class="chatlist" style="display:none">archive</div><div class="chatlist">chats</div></div></template>`);
+    await page.evaluate(`document.querySelectorAll("#cells input").forEach((cell) => cell.addEventListener("input", () => {
+      const code = [...document.querySelectorAll("#cells input")].map((c) => c.value).join("");
+      if (code === "54321") document.body.innerHTML = document.getElementById("after").innerHTML;
+    }))`);
+
+    assert.equal(await telegramLoginDriver.submitCode(page, "54321"), "done");
+    await page.close();
+  });
+
+  it("waits for a login that finishes a few seconds after the code (no stuck probe)", async (t) => {
+    if (!browser) return t.skip("Chromium не установлен");
+    const page = await browser.newPage();
+    // Как на живом аккаунте: после кода Web K входит не сразу — проба в это время не должна зависнуть
+    const loggedIn = `document.body.innerHTML = '<div id="column-left"><div class="chatlist">chats</div></div>'`;
+    await page.setContent(NEW_CODE_SCREEN.replace(loggedIn, `setTimeout(() => { ${loggedIn}; }, 3000)`));
+
+    const started = Date.now();
+    assert.equal(await telegramLoginDriver.submitCode(page, "12345"), "done");
+    assert.ok(Date.now() - started < 10_000, `вход распознан за ${Date.now() - started} мс`);
+    await page.close();
+  });
+
   it("reports a wrong code as LOGIN_REJECTED with the text of Telegram", async (t) => {
     if (!browser) return t.skip("Chromium не установлен");
     const page = await browser.newPage();

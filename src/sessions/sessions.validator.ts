@@ -1,6 +1,7 @@
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { ENUM_SESSION_PLATFORM, ENUM_SESSION_PLATFORM_TYPE, TStorageState } from "../type";
+import { telegramAccountIdFromStorage } from "./telegram-auth";
 
 // zod v4 вешает методы на экземпляр при создании: StorageStateSchema должна родиться уже с .openapi,
 // иначе dto.ts падает, если этот модуль загрузился раньше него (зависит от порядка импортов)
@@ -37,9 +38,7 @@ const INSTAGRAM_DOMAIN = "instagram.com";
  */
 export function findStorageStateProblem(platform: ENUM_SESSION_PLATFORM_TYPE, state: TStorageState): string | null {
   if (platform === ENUM_SESSION_PLATFORM.TELEGRAM) {
-    const origin = state.origins.find((item) => item.origin.includes(TELEGRAM_ORIGIN));
-    const userAuth = origin?.localStorage.find((item) => item.name === "user_auth")?.value;
-    if (!userAuth || userAuth === "null") return "Нет localStorage.user_auth для web.telegram.org";
+    if (!telegramUserId(state)) return "Нет входа в web.telegram.org: в localStorage нет user_auth и accountN.userId";
   }
 
   if (platform === ENUM_SESSION_PLATFORM.INSTAGRAM) {
@@ -54,16 +53,10 @@ export function findStorageStateProblem(platform: ENUM_SESSION_PLATFORM_TYPE, st
   return null;
 }
 
-/** telegram_user_id из localStorage.user_auth = {"dcID":2,"id":7697061334,...} */
+/** telegram_user_id вошедшего аккаунта: user_auth (старый Web K) или accountN.userId (новый) */
 function telegramUserId(state: TStorageState): string | null {
   const origin = state.origins.find((item) => item.origin.includes(TELEGRAM_ORIGIN));
-  const raw = origin?.localStorage.find((item) => item.name === "user_auth")?.value;
-  try {
-    const id = raw ? JSON.parse(raw)?.id : null;
-    return id ? String(id) : null;
-  } catch {
-    return null;
-  }
+  return origin ? telegramAccountIdFromStorage(origin.localStorage) : null;
 }
 
 /**

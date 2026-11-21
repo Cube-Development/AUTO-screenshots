@@ -1,20 +1,14 @@
 // npm run auth:telegram
 // Ручной вход в Telegram Web K под юзерботом и экспорт сессии для загрузки в админке
 import { chromium, Page } from "playwright";
+import { TELEGRAM_ACCOUNT_ID_JS } from "../../sessions/telegram-auth";
 import { exportStorageState, waitForEnter } from "./auth.utils";
 
 const MAX_ATTEMPTS = 3;
 
-/** id аккаунта Web K хранит в localStorage.user_auth: {"dcID":2,"id":7697061334,...} */
+/** id аккаунта Web K: localStorage.user_auth.id (старый Web K) или accountN.userId (новый) */
 async function readTelegramUserId(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    try {
-      const auth = JSON.parse(localStorage.getItem("user_auth") || "null");
-      return auth?.id ? String(auth.id) : null;
-    } catch {
-      return null;
-    }
-  });
+  return page.evaluate<string | null>(TELEGRAM_ACCOUNT_ID_JS).catch(() => null);
 }
 
 async function main() {
@@ -30,7 +24,7 @@ async function main() {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS && !userId; attempt++) {
     await waitForEnter(`2. После входа нажмите Enter (попытка ${attempt}/${MAX_ATTEMPTS})...`);
     userId = await readTelegramUserId(page);
-    if (!userId) console.log("Вход не обнаружен (нет localStorage.user_auth). Попробуйте снова.");
+    if (!userId) console.log("Вход не обнаружен (нет авторизации в localStorage). Попробуйте снова.");
   }
 
   if (userId) {
